@@ -3,4 +3,3 @@ edge-tts==7.0.2
 lasio==0.31
 numpy==1.26.4
 Pillow==11.2.1
-nest-asyncio==1.6.0

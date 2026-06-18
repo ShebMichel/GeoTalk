@@ -79,18 +79,12 @@ async def _generate_tts(text: str, voice: str, output_path: str):
 
 
 def _run_async(coro):
-    """Run a coroutine, handling the case where an event loop is already running (e.g. Gradio)."""
+    """Run a coroutine from a sync context, safe even when called from a worker thread."""
+    loop = asyncio.new_event_loop()
     try:
-        loop = asyncio.get_running_loop()
-    except RuntimeError:
-        loop = None
-
-    if loop and loop.is_running():
-        import nest_asyncio
-        nest_asyncio.apply()
         return loop.run_until_complete(coro)
-    else:
-        return asyncio.run(coro)
+    finally:
+        loop.close()
 
 
 def generate_audio_for_script(script: list[dict], mode: str) -> list[dict]:
