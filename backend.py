@@ -12,7 +12,7 @@ from huggingface_hub import InferenceClient
 
 HF_TOKEN = os.environ.get("HF_TOKEN", "")
 TEXT_MODEL = "Qwen/Qwen2.5-72B-Instruct"
-VISION_MODEL = "Qwen/Qwen2.5-VL-7B-Instruct"
+VISION_MODEL = "CohereLabs/aya-vision-32b"
 
 client = InferenceClient(token=HF_TOKEN)
 
