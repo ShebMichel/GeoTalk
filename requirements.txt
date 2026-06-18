@@ -1,4 +1,4 @@
-huggingface-hub==0.30.2
+huggingface-hub>=1.2.0
 edge-tts==7.0.2
 lasio==0.31
 numpy==1.26.4
