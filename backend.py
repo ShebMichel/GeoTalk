@@ -14,7 +14,7 @@ HF_TOKEN = os.environ.get("HF_TOKEN", "")
 TEXT_MODEL = "meta-llama/Llama-3.1-8B-Instruct"
 VISION_MODEL = "meta-llama/Llama-3.2-11B-Vision-Instruct"
 
-client = InferenceClient(provider="hf-inference", token=HF_TOKEN)
+client = InferenceClient(token=HF_TOKEN)
 
 # Edge-TTS voice pairs for distinct speakers
 VOICE_PAIRS = {
