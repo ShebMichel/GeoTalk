@@ -486,6 +486,47 @@ function buildTranscript(data) {
     });
 }
 
+// --- Click-to-play overlay (fallback when autoplay is blocked) ---
+let clickOverlay = null;
+
+function showClickOverlay() {
+    if (clickOverlay) return;
+    clickOverlay = document.createElement('div');
+    clickOverlay.id = 'click-overlay';
+    clickOverlay.style.cssText = `
+        position:absolute; top:0; left:0; right:0; bottom:0; z-index:100;
+        background:rgba(0,0,0,0.6); backdrop-filter:blur(4px);
+        display:flex; flex-direction:column; align-items:center; justify-content:center;
+        cursor:pointer; border-radius:12px;
+    `;
+    clickOverlay.innerHTML = `
+        <div style="width:70px;height:70px;border-radius:50%;background:#4fc3f7;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 20px rgba(79,195,247,0.5);">
+            <span style="font-size:32px;margin-left:4px;">▶</span>
+        </div>
+        <div style="color:#fff;font-size:14px;margin-top:14px;font-weight:600;">Click to start GeoTalk Live</div>
+        <div style="color:rgba(255,255,255,0.6);font-size:12px;margin-top:4px;">Episode ready</div>
+    `;
+    clickOverlay.addEventListener('click', () => {
+        if (audioEl) {
+            audioEl.play();
+        }
+        hideClickOverlay();
+    }, { once: true });
+
+    const mainContainer = document.getElementById('main-container');
+    mainContainer.style.position = 'relative';
+    mainContainer.appendChild(clickOverlay);
+
+    document.getElementById('sub-text').textContent = '🎙️ Episode ready — click to play!';
+}
+
+function hideClickOverlay() {
+    if (clickOverlay) {
+        clickOverlay.remove();
+        clickOverlay = null;
+    }
+}
+
 // --- Public API ---
 window.GeoTalkRobots = {
     /**
@@ -513,7 +554,7 @@ window.GeoTalkRobots = {
         // Build transcript log
         buildTranscript(data);
 
-        // Create audio element and auto-play
+        // Create audio element
         if (audioEl) { audioEl.pause(); audioEl.remove(); }
         audioEl = new Audio(audioUrl);
         audioEl.addEventListener('play', () => { playBtn.textContent = '⏸'; requestAnimationFrame(updatePlayback); });
@@ -526,11 +567,18 @@ window.GeoTalkRobots = {
             updateSpeakerIndicators(-1);
         });
 
-        // Auto-play
-        audioEl.play().catch(() => {
-            // Autoplay blocked - show play button prompt
-            document.getElementById('sub-text').textContent = '▶ Press play to start the episode';
-        });
+        // Attempt auto-play; if blocked, show click-to-play overlay
+        function tryPlay() {
+            audioEl.play().then(() => {
+                // Success — hide overlay if shown
+                hideClickOverlay();
+            }).catch(() => {
+                // Autoplay blocked — show click-to-play overlay
+                showClickOverlay();
+            });
+        }
+
+        tryPlay();
     },
 
     stop() {

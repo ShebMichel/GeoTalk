@@ -64,7 +64,7 @@ def get_robot_idle_html(message="Waiting for episode..."):
     return f"""<div style="width:100%;border-radius:12px;overflow:hidden;">
 <iframe id="robot-frame" srcdoc='{ROBOT_HTML.replace(chr(39), "&#39;")}' 
     style="width:100%;height:520px;border:none;border-radius:12px;" 
-    sandbox="allow-scripts allow-same-origin"></iframe>
+    sandbox="allow-scripts allow-same-origin" allow="autoplay"></iframe>
 </div>"""
 
 
@@ -117,7 +117,7 @@ window.addEventListener('load', function() {{
     return f"""<div style="width:100%;border-radius:12px;overflow:hidden;">
 <iframe id="robot-frame" srcdoc='{modified_html.replace(chr(39), "&#39;")}' 
     style="width:100%;height:520px;border:none;border-radius:12px;" 
-    sandbox="allow-scripts allow-same-origin"></iframe>
+    sandbox="allow-scripts allow-same-origin" allow="autoplay"></iframe>
 </div>"""
 
 
