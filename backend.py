@@ -87,15 +87,30 @@ def _run_async(coro):
         loop.close()
 
 
+def _get_audio_duration(audio_path: str) -> float:
+    """Estimate MP3 duration in seconds from file size and bitrate.
+    Edge-TTS outputs ~48kbps MP3. Falls back to word-count estimate.
+    """
+    try:
+        file_size = os.path.getsize(audio_path)
+        # Edge-TTS uses ~48kbps audio; duration ≈ file_size / (bitrate/8)
+        duration = file_size / (48000 / 8)
+        return max(duration, 0.5)
+    except OSError:
+        return 3.0  # fallback
+
+
 def generate_audio_for_script(script: list[dict], mode: str) -> list[dict]:
     """Generate TTS audio files for each line in the script.
-    Returns list of {speaker, line, audio_path} dicts.
+    Returns list of {speaker, line, audio_path, duration, speakerIdx} dicts.
     """
     voice_a, voice_b = VOICE_PAIRS.get(mode, VOICE_PAIRS["core_talk"])
     speakers = list(dict.fromkeys(item["speaker"] for item in script))
     voice_map = {}
+    speaker_idx_map = {}
     for i, speaker in enumerate(speakers):
         voice_map[speaker] = voice_a if i % 2 == 0 else voice_b
+        speaker_idx_map[speaker] = i % 2  # 0 = left robot, 1 = right robot
 
     tmp_dir = tempfile.mkdtemp(prefix="geotalk_")
     results = []
@@ -104,10 +119,13 @@ def generate_audio_for_script(script: list[dict], mode: str) -> list[dict]:
         audio_path = os.path.join(tmp_dir, f"line_{i:03d}.mp3")
         voice = voice_map.get(item["speaker"], voice_a)
         _run_async(_generate_tts(item["line"], voice, audio_path))
+        duration = _get_audio_duration(audio_path)
         results.append({
             "speaker": item["speaker"],
             "line": item["line"],
             "audio_path": audio_path,
+            "duration": duration,
+            "speakerIdx": speaker_idx_map.get(item["speaker"], 0),
         })
 
     return results

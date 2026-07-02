@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { background: transparent; overflow: hidden; }
+#scene-container {
+    width: 100%;
+    height: 400px;
+    position: relative;
+    border-radius: 12px;
+    overflow: hidden;
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+}
+#subtitle-bar {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: rgba(0,0,0,0.7);
+    backdrop-filter: blur(8px);
+    color: #fff;
+    padding: 12px 20px;
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    font-size: 14px;
+    line-height: 1.4;
+    min-height: 50px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+#subtitle-bar .speaker-name {
+    font-weight: 700;
+    color: #4fc3f7;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+#subtitle-bar .speaker-text {
+    color: #e0e0e0;
+}
+.speaker-indicator {
+    position: absolute;
+    top: 12px;
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    font-size: 12px;
+    font-weight: 600;
+    color: #fff;
+    backdrop-filter: blur(4px);
+    transition: opacity 0.3s, transform 0.3s;
+    opacity: 0.6;
+}
+.speaker-indicator.active {
+    opacity: 1;
+    transform: scale(1.05);
+}
+#speaker-left {
+    left: 12px;
+    background: rgba(76, 175, 80, 0.8);
+}
+#speaker-right {
+    right: 12px;
+    background: rgba(156, 39, 176, 0.8);
+}
+#status-badge {
+    position: absolute;
+    top: 12px;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 4px 12px;
+    border-radius: 12px;
+    background: rgba(255,255,255,0.15);
+    backdrop-filter: blur(4px);
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    font-size: 11px;
+    color: rgba(255,255,255,0.8);
+}
+</style>
+</head>
+<body>
+<div id="scene-container">
+    <canvas id="robot-canvas"></canvas>
+    <div id="speaker-left" class="speaker-indicator">Speaker A</div>
+    <div id="speaker-right" class="speaker-indicator">Speaker B</div>
+    <div id="status-badge">🎙️ GeoTalk Live</div>
+    <div id="subtitle-bar">
+        <span class="speaker-name" id="sub-speaker"></span>
+        <span class="speaker-text" id="sub-text">Waiting for podcast to start...</span>
+    </div>
+</div>
+
+<script type="importmap">
+{
+    "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js"
+    }
+}
+</script>
+<script type="module">
+import * as THREE from 'three';
+
+// --- Scene Setup ---
+const container = document.getElementById('scene-container');
+const canvas = document.getElementById('robot-canvas');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+renderer.setPixelRatio(window.devicePixelRatio);
+renderer.setSize(container.clientWidth, container.clientHeight);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 100);
+camera.position.set(0, 1.5, 5);
+camera.lookAt(0, 0.8, 0);
+
+// --- Lighting ---
+const ambientLight = new THREE.AmbientLight(0x404060, 0.8);
+scene.add(ambientLight);
+
+const keyLight = new THREE.DirectionalLight(0xffffff, 1.2);
+keyLight.position.set(3, 5, 4);
+keyLight.castShadow = true;
+scene.add(keyLight);
+
+const fillLight = new THREE.DirectionalLight(0x4fc3f7, 0.4);
+fillLight.position.set(-3, 2, -2);
+scene.add(fillLight);
+
+const rimLight = new THREE.PointLight(0xff6f61, 0.6, 10);
+rimLight.position.set(0, 3, -3);
+scene.add(rimLight);
+
+// --- Floor / Stage ---
+const floorGeo = new THREE.CircleGeometry(4, 64);
+const floorMat = new THREE.MeshStandardMaterial({ color: 0x1a1a2e, roughness: 0.8 });
+const floor = new THREE.Mesh(floorGeo, floorMat);
+floor.rotation.x = -Math.PI / 2;
+floor.receiveShadow = true;
+scene.add(floor);
+
+// --- Robot Builder (Reachy Mini inspired) ---
+function createRobot(color, x) {
+    const group = new THREE.Group();
+    const mainColor = new THREE.Color(color);
+    const darkColor = mainColor.clone().multiplyScalar(0.5);
+    
+    // Body (cylindrical like Reachy Mini)
+    const bodyGeo = new THREE.CylinderGeometry(0.3, 0.35, 0.9, 16);
+    const bodyMat = new THREE.MeshStandardMaterial({ color: mainColor, roughness: 0.3, metalness: 0.6 });
+    const body = new THREE.Mesh(bodyGeo, bodyMat);
+    body.position.y = 0.7;
+    body.castShadow = true;
+    group.add(body);
+
+    // Body accent ring
+    const ringGeo = new THREE.TorusGeometry(0.32, 0.03, 8, 32);
+    const ringMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.2, metalness: 0.8 });
+    const ring = new THREE.Mesh(ringGeo, ringMat);
+    ring.position.y = 0.9;
+    ring.rotation.x = Math.PI / 2;
+    group.add(ring);
+
+    // Neck
+    const neckGeo = new THREE.CylinderGeometry(0.08, 0.12, 0.15, 12);
+    const neckMat = new THREE.MeshStandardMaterial({ color: 0x333333, roughness: 0.4, metalness: 0.7 });
+    const neck = new THREE.Mesh(neckGeo, neckMat);
+    neck.position.y = 1.22;
+    group.add(neck);
+
+    // Head (sphere like Reachy Mini)
+    const headGeo = new THREE.SphereGeometry(0.28, 24, 24);
+    const headMat = new THREE.MeshStandardMaterial({ color: mainColor, roughness: 0.3, metalness: 0.5 });
+    const head = new THREE.Mesh(headGeo, headMat);
+    head.position.y = 1.5;
+    head.castShadow = true;
+    group.add(head);
+
+    // Eyes (camera lenses like Reachy)
+    const eyeGeo = new THREE.SphereGeometry(0.07, 16, 16);
+    const eyeMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.1, metalness: 0.9 });
+    const eyeRingGeo = new THREE.TorusGeometry(0.07, 0.015, 8, 16);
+    const eyeRingMat = new THREE.MeshStandardMaterial({ color: 0xcccccc, metalness: 0.9, roughness: 0.2 });
+
+    const leftEye = new THREE.Mesh(eyeGeo, eyeMat);
+    leftEye.position.set(-0.1, 1.52, 0.24);
+    group.add(leftEye);
+    const leftEyeRing = new THREE.Mesh(eyeRingGeo, eyeRingMat);
+    leftEyeRing.position.set(-0.1, 1.52, 0.24);
+    group.add(leftEyeRing);
+
+    const rightEye = new THREE.Mesh(eyeGeo, eyeMat);
+    rightEye.position.set(0.1, 1.52, 0.24);
+    group.add(rightEye);
+    const rightEyeRing = new THREE.Mesh(eyeRingGeo, eyeRingMat);
+    rightEyeRing.position.set(0.1, 1.52, 0.24);
+    group.add(rightEyeRing);
+
+    // Antennas (Reachy Mini's signature feature)
+    const antennaGeo = new THREE.CylinderGeometry(0.015, 0.02, 0.3, 8);
+    const antennaMat = new THREE.MeshStandardMaterial({ color: 0x666666, metalness: 0.8, roughness: 0.3 });
+    
+    const leftAntenna = new THREE.Mesh(antennaGeo, antennaMat);
+    leftAntenna.position.set(-0.12, 1.85, 0);
+    leftAntenna.rotation.z = 0.2;
+    group.add(leftAntenna);
+
+    const rightAntenna = new THREE.Mesh(antennaGeo, antennaMat);
+    rightAntenna.position.set(0.12, 1.85, 0);
+    rightAntenna.rotation.z = -0.2;
+    group.add(rightAntenna);
+
+    // Antenna tips (glowing)
+    const tipGeo = new THREE.SphereGeometry(0.035, 12, 12);
+    const tipMat = new THREE.MeshStandardMaterial({ 
+        color: mainColor, emissive: mainColor, emissiveIntensity: 0.5, roughness: 0.2 
+    });
+    const leftTip = new THREE.Mesh(tipGeo, tipMat);
+    leftTip.position.set(-0.15, 2.0, 0);
+    group.add(leftTip);
+    const rightTip = new THREE.Mesh(tipGeo, tipMat);
+    rightTip.position.set(0.15, 2.0, 0);
+    group.add(rightTip);
+
+    // Base / foot
+    const baseGeo = new THREE.CylinderGeometry(0.35, 0.4, 0.15, 16);
+    const baseMat = new THREE.MeshStandardMaterial({ color: darkColor, roughness: 0.4, metalness: 0.6 });
+    const base = new THREE.Mesh(baseGeo, baseMat);
+    base.position.y = 0.15;
+    base.castShadow = true;
+    group.add(base);
+
+    // Speaker grille on body (Reachy has a speaker)
+    const speakerGeo = new THREE.CircleGeometry(0.12, 24);
+    const speakerMat = new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.8, side: THREE.DoubleSide });
+    const speaker = new THREE.Mesh(speakerGeo, speakerMat);
+    speaker.position.set(0, 0.6, 0.35);
+    group.add(speaker);
+
+    group.position.x = x;
+    group.userData = { 
+        head, leftAntenna, rightAntenna, leftTip, rightTip, 
+        tipMat, body, isTalking: false, talkPhase: 0 
+    };
+    
+    scene.add(group);
+    return group;
+}
+
+// Create two robots
+const robotA = createRobot(0x4caf50, -1.2); // Green (Speaker A - left)
+const robotB = createRobot(0x9c27b0, 1.2);  // Purple (Speaker B - right)
+
+// Slightly angle them toward each other
+robotA.rotation.y = 0.3;
+robotB.rotation.y = -0.3;
+
+// --- Animation State ---
+let currentSpeaker = -1; // -1 = idle, 0 = A, 1 = B
+let timeline = []; // [{speaker, line, startTime, duration}]
+let playbackStart = 0;
+let isPlaying = false;
+
+// --- Idle bobbing animation ---
+function idleAnimation(robot, time, offset) {
+    const d = robot.userData;
+    // Gentle body sway
+    robot.position.y = Math.sin(time * 0.8 + offset) * 0.02;
+    robot.rotation.y = robot.rotation.y + Math.sin(time * 0.3 + offset) * 0.0002;
+    
+    // Antenna sway
+    d.leftAntenna.rotation.z = 0.2 + Math.sin(time * 1.2 + offset) * 0.05;
+    d.rightAntenna.rotation.z = -0.2 + Math.sin(time * 1.2 + offset + 1) * 0.05;
+}
+
+// --- Talking animation ---
+function talkingAnimation(robot, time) {
+    const d = robot.userData;
+    d.talkPhase += 0.15;
+    
+    // Head bob while talking
+    d.head.position.y = 1.5 + Math.sin(d.talkPhase * 3) * 0.02;
+    d.head.rotation.x = Math.sin(d.talkPhase * 2) * 0.05;
+    d.head.rotation.z = Math.sin(d.talkPhase * 1.5) * 0.03;
+    
+    // Antenna excitement
+    d.leftAntenna.rotation.z = 0.2 + Math.sin(d.talkPhase * 4) * 0.15;
+    d.rightAntenna.rotation.z = -0.2 + Math.sin(d.talkPhase * 4 + 1) * 0.15;
+    
+    // Glowing antenna tips pulse
+    d.tipMat.emissiveIntensity = 0.5 + Math.sin(d.talkPhase * 5) * 0.4;
+    
+    // Body lean forward slightly
+    robot.rotation.x = Math.sin(d.talkPhase * 1.2) * 0.03;
+}
+
+// --- Listening animation (other robot) ---
+function listeningAnimation(robot, time) {
+    const d = robot.userData;
+    // Slight head tilt toward speaker
+    d.head.rotation.z = Math.sin(time * 0.5) * 0.08;
+    d.head.rotation.x = -0.05; // leaning in
+    d.tipMat.emissiveIntensity = 0.3;
+}
+
+// --- Main render loop ---
+function animate() {
+    requestAnimationFrame(animate);
+    const time = performance.now() / 1000;
+    
+    // Update playback state
+    if (isPlaying && timeline.length > 0) {
+        const elapsed = (performance.now() - playbackStart) / 1000;
+        let activeLine = -1;
+        for (let i = 0; i < timeline.length; i++) {
+            if (elapsed >= timeline[i].startTime && elapsed < timeline[i].startTime + timeline[i].duration) {
+                activeLine = i;
+                break;
+            }
+        }
+        if (activeLine >= 0) {
+            const item = timeline[activeLine];
+            const speakerIdx = item.speakerIdx;
+            if (currentSpeaker !== speakerIdx) {
+                currentSpeaker = speakerIdx;
+                updateSpeakerUI(item.speaker, item.line, speakerIdx);
+            }
+        } else if (elapsed >= timeline[timeline.length - 1].startTime + timeline[timeline.length - 1].duration) {
+            // Playback ended
+            isPlaying = false;
+            currentSpeaker = -1;
+            resetSpeakerUI();
+        }
+    }
+    
+    // Animate robots
+    if (currentSpeaker === 0) {
+        talkingAnimation(robotA, time);
+        listeningAnimation(robotB, time);
+    } else if (currentSpeaker === 1) {
+        talkingAnimation(robotB, time);
+        listeningAnimation(robotA, time);
+    } else {
+        idleAnimation(robotA, time, 0);
+        idleAnimation(robotB, time, Math.PI);
+    }
+    
+    renderer.render(scene, camera);
+}
+animate();
+
+// --- UI Updates ---
+function updateSpeakerUI(speaker, line, idx) {
+    document.getElementById('sub-speaker').textContent = speaker + ':';
+    document.getElementById('sub-text').textContent = line;
+    
+    const leftIndicator = document.getElementById('speaker-left');
+    const rightIndicator = document.getElementById('speaker-right');
+    
+    leftIndicator.classList.toggle('active', idx === 0);
+    rightIndicator.classList.toggle('active', idx === 1);
+}
+
+function resetSpeakerUI() {
+    document.getElementById('sub-speaker').textContent = '';
+    document.getElementById('sub-text').textContent = '✅ Episode complete!';
+    document.getElementById('speaker-left').classList.remove('active');
+    document.getElementById('speaker-right').classList.remove('active');
+}
+
+// --- Resize handler ---
+function onResize() {
+    const w = container.clientWidth;
+    const h = container.clientHeight;
+    camera.aspect = w / h;
+    camera.updateProjectionMatrix();
+    renderer.setSize(w, h);
+}
+window.addEventListener('resize', onResize);
+new ResizeObserver(onResize).observe(container);
+
+// --- Public API for Gradio to call ---
+window.GeoTalkRobots = {
+    /**
+     * Start playback synced to audio.
+     * @param {Array} data - [{speaker, line, duration, speakerIdx}]
+     * @param {string} speakerAName - Display name for speaker A
+     * @param {string} speakerBName - Display name for speaker B
+     */
+    start(data, speakerAName, speakerBName) {
+        // Set speaker labels
+        document.getElementById('speaker-left').textContent = speakerAName || 'Speaker A';
+        document.getElementById('speaker-right').textContent = speakerBName || 'Speaker B';
+        
+        // Build timeline with cumulative start times
+        timeline = [];
+        let cumTime = 0;
+        for (const item of data) {
+            timeline.push({
+                speaker: item.speaker,
+                line: item.line,
+                startTime: cumTime,
+                duration: item.duration,
+                speakerIdx: item.speakerIdx
+            });
+            cumTime += item.duration;
+        }
+        
+        playbackStart = performance.now();
+        isPlaying = true;
+        currentSpeaker = -1;
+        
+        document.getElementById('sub-speaker').textContent = '';
+        document.getElementById('sub-text').textContent = '🎙️ Starting...';
+    },
+    
+    stop() {
+        isPlaying = false;
+        currentSpeaker = -1;
+        resetSpeakerUI();
+    },
+    
+    /** Set to idle / waiting state */
+    idle(message) {
+        isPlaying = false;
+        currentSpeaker = -1;
+        document.getElementById('sub-speaker').textContent = '';
+        document.getElementById('sub-text').textContent = message || 'Waiting for podcast to start...';
+        document.getElementById('speaker-left').classList.remove('active');
+        document.getElementById('speaker-right').classList.remove('active');
+    }
+};
+</script>
+</body>
+</html>
