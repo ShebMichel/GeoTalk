@@ -1,30 +1,27 @@
-<!DOCTYPE html>
-<html>
-<head>
+<!-- GeoTalk Robot Viewer - Inline Component -->
+<div id="geotalk-viewer" style="width:100%;border-radius:12px;overflow:hidden;position:relative;">
 <style>
-* { margin: 0; padding: 0; box-sizing: border-box; }
-body { background: transparent; overflow: hidden; font-family: 'Segoe UI', system-ui, sans-serif; }
-#main-container {
+#geotalk-viewer * { margin: 0; padding: 0; box-sizing: border-box; }
+#geotalk-viewer { font-family: 'Segoe UI', system-ui, sans-serif; }
+#gt-main {
     width: 100%;
     height: 520px;
-    position: relative;
-    border-radius: 12px;
-    overflow: hidden;
     display: flex;
     flex-direction: column;
+    border-radius: 12px;
+    overflow: hidden;
 }
-#scene-container {
+#gt-scene {
     width: 100%;
     height: 320px;
     position: relative;
     flex-shrink: 0;
     background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
 }
-#subtitle-bar {
+#gt-scene canvas { display: block; width: 100%; height: 100%; }
+#gt-subtitle {
     position: absolute;
-    bottom: 0;
-    left: 0;
-    right: 0;
+    bottom: 0; left: 0; right: 0;
     background: rgba(0,0,0,0.75);
     backdrop-filter: blur(8px);
     color: #fff;
@@ -36,569 +33,316 @@ body { background: transparent; overflow: hidden; font-family: 'Segoe UI', syste
     align-items: center;
     gap: 8px;
 }
-#subtitle-bar .speaker-name {
-    font-weight: 700;
-    color: #4fc3f7;
-    white-space: nowrap;
-    flex-shrink: 0;
-}
-#subtitle-bar .speaker-text {
-    color: #e0e0e0;
-}
-.speaker-indicator {
-    position: absolute;
-    top: 10px;
-    padding: 5px 12px;
-    border-radius: 16px;
-    font-size: 11px;
-    font-weight: 600;
-    color: #fff;
+#gt-subtitle .gt-spk { font-weight: 700; color: #4fc3f7; white-space: nowrap; flex-shrink: 0; }
+#gt-subtitle .gt-txt { color: #e0e0e0; }
+.gt-ind {
+    position: absolute; top: 10px;
+    padding: 5px 12px; border-radius: 16px;
+    font-size: 11px; font-weight: 600; color: #fff;
     backdrop-filter: blur(4px);
     transition: opacity 0.3s, transform 0.3s;
     opacity: 0.5;
 }
-.speaker-indicator.active {
-    opacity: 1;
-    transform: scale(1.08);
+.gt-ind.active { opacity: 1; transform: scale(1.08); }
+#gt-ind-l { left: 10px; background: rgba(76, 175, 80, 0.85); }
+#gt-ind-r { right: 10px; background: rgba(156, 39, 176, 0.85); }
+#gt-badge {
+    position: absolute; top: 10px; left: 50%; transform: translateX(-50%);
+    padding: 4px 12px; border-radius: 12px;
+    background: rgba(255,255,255,0.15); backdrop-filter: blur(4px);
+    font-size: 11px; color: rgba(255,255,255,0.8);
 }
-#speaker-left { left: 10px; background: rgba(76, 175, 80, 0.85); }
-#speaker-right { right: 10px; background: rgba(156, 39, 176, 0.85); }
-
-#status-badge {
-    position: absolute;
-    top: 10px;
-    left: 50%;
-    transform: translateX(-50%);
-    padding: 4px 12px;
-    border-radius: 12px;
-    background: rgba(255,255,255,0.15);
-    backdrop-filter: blur(4px);
-    font-size: 11px;
-    color: rgba(255,255,255,0.8);
+#gt-controls {
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 14px; background: #1e1e2e;
+    border-top: 1px solid rgba(255,255,255,0.08); flex-shrink: 0;
 }
-
-/* --- Controls bar --- */
-#controls-bar {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 8px 14px;
-    background: #1e1e2e;
-    border-top: 1px solid rgba(255,255,255,0.08);
-    flex-shrink: 0;
+#gt-play {
+    width: 36px; height: 36px; border-radius: 50%; border: none;
+    background: #4fc3f7; color: #111; font-size: 16px;
+    cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0;
 }
-#play-btn {
-    width: 32px; height: 32px;
-    border-radius: 50%;
-    border: none;
-    background: #4fc3f7;
-    color: #111;
-    font-size: 14px;
-    cursor: pointer;
-    display: flex; align-items: center; justify-content: center;
-    flex-shrink: 0;
+#gt-play:hover { background: #81d4fa; }
+#gt-prog { flex: 1; height: 6px; background: rgba(255,255,255,0.15); border-radius: 3px; cursor: pointer; }
+#gt-prog-fill { height: 100%; background: #4fc3f7; border-radius: 3px; width: 0%; transition: width 0.2s linear; }
+#gt-time { font-size: 11px; color: rgba(255,255,255,0.6); white-space: nowrap; flex-shrink: 0; }
+#gt-tog {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 6px 14px; background: #16162a; cursor: pointer; user-select: none;
+    border-top: 1px solid rgba(255,255,255,0.05); flex-shrink: 0;
 }
-#play-btn:hover { background: #81d4fa; }
-#progress-bar {
-    flex: 1;
-    height: 4px;
-    background: rgba(255,255,255,0.15);
-    border-radius: 2px;
-    cursor: pointer;
-    position: relative;
+#gt-tog span { font-size: 12px; color: rgba(255,255,255,0.7); font-weight: 600; }
+#gt-log {
+    flex: 1; overflow-y: auto; background: #12121e; padding: 10px 14px; min-height: 0;
 }
-#progress-fill {
-    height: 100%;
-    background: #4fc3f7;
-    border-radius: 2px;
-    width: 0%;
-    transition: width 0.3s linear;
-}
-#time-display {
-    font-size: 11px;
-    color: rgba(255,255,255,0.6);
-    white-space: nowrap;
-    flex-shrink: 0;
-}
-
-/* --- Transcript log --- */
-#transcript-panel {
-    flex: 1;
-    overflow-y: auto;
-    background: #12121e;
-    padding: 10px 14px;
-    min-height: 0;
-}
-#transcript-panel::-webkit-scrollbar { width: 6px; }
-#transcript-panel::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 3px; }
-#transcript-toggle {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 6px 14px;
-    background: #16162a;
-    cursor: pointer;
-    user-select: none;
-    border-top: 1px solid rgba(255,255,255,0.05);
-    flex-shrink: 0;
-}
-#transcript-toggle span {
-    font-size: 12px;
-    color: rgba(255,255,255,0.7);
-    font-weight: 600;
-}
-#transcript-toggle .arrow {
-    transition: transform 0.2s;
-    color: rgba(255,255,255,0.5);
-}
-#transcript-toggle.collapsed .arrow { transform: rotate(180deg); }
-
-.transcript-line {
-    padding: 6px 0;
-    font-size: 12px;
-    line-height: 1.5;
+#gt-log::-webkit-scrollbar { width: 6px; }
+#gt-log::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 3px; }
+.gt-line {
+    padding: 6px 0; font-size: 12px; line-height: 1.5;
     color: rgba(255,255,255,0.4);
     border-bottom: 1px solid rgba(255,255,255,0.03);
     transition: color 0.3s, background 0.3s;
 }
-.transcript-line.active {
-    color: #fff;
-    background: rgba(79, 195, 247, 0.08);
-    border-radius: 6px;
-    padding: 6px 8px;
-}
-.transcript-line.past {
-    color: rgba(255,255,255,0.6);
-}
-.transcript-line .tl-speaker {
-    font-weight: 700;
-    color: #4fc3f7;
-}
-.transcript-line.speaker-b .tl-speaker {
-    color: #ce93d8;
-}
+.gt-line.active { color: #fff; background: rgba(79,195,247,0.08); border-radius: 6px; padding: 6px 8px; }
+.gt-line.past { color: rgba(255,255,255,0.6); }
+.gt-line .gt-ls { font-weight: 700; color: #4fc3f7; }
+.gt-line.spkb .gt-ls { color: #ce93d8; }
 </style>
-</head>
-<body>
-<div id="main-container">
-    <div id="scene-container">
-        <canvas id="robot-canvas"></canvas>
-        <div id="speaker-left" class="speaker-indicator">Speaker A</div>
-        <div id="speaker-right" class="speaker-indicator">Speaker B</div>
-        <div id="status-badge">🎙️ GeoTalk Live</div>
-        <div id="subtitle-bar">
-            <span class="speaker-name" id="sub-speaker"></span>
-            <span class="speaker-text" id="sub-text">Waiting for episode...</span>
+
+<div id="gt-main">
+    <div id="gt-scene">
+        <canvas id="gt-canvas"></canvas>
+        <div id="gt-ind-l" class="gt-ind">Speaker A</div>
+        <div id="gt-ind-r" class="gt-ind">Speaker B</div>
+        <div id="gt-badge">🎙️ GeoTalk Live</div>
+        <div id="gt-subtitle">
+            <span class="gt-spk" id="gt-sub-spk"></span>
+            <span class="gt-txt" id="gt-sub-txt">Waiting for episode...</span>
         </div>
     </div>
-    <div id="controls-bar">
-        <button id="play-btn">▶</button>
-        <div id="progress-bar"><div id="progress-fill"></div></div>
-        <span id="time-display">0:00 / 0:00</span>
+    <div id="gt-controls">
+        <button id="gt-play">▶</button>
+        <div id="gt-prog"><div id="gt-prog-fill"></div></div>
+        <span id="gt-time">0:00 / 0:00</span>
     </div>
-    <div id="transcript-toggle">
+    <div id="gt-tog">
         <span>📜 Transcript</span>
-        <span class="arrow">▼</span>
+        <span id="gt-arrow">▼</span>
     </div>
-    <div id="transcript-panel"></div>
+    <div id="gt-log"></div>
+</div>
 </div>
 
-<script type="importmap">
-{
-    "imports": {
-        "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js"
-    }
-}
-</script>
 <script type="module">
-import * as THREE from 'three';
+import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js';
 
-// --- Scene Setup ---
-const sceneContainer = document.getElementById('scene-container');
-const canvas = document.getElementById('robot-canvas');
+const sceneEl = document.getElementById('gt-scene');
+const canvas = document.getElementById('gt-canvas');
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
-renderer.setPixelRatio(window.devicePixelRatio);
-renderer.setSize(sceneContainer.clientWidth, sceneContainer.clientHeight);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setSize(sceneEl.clientWidth, sceneEl.clientHeight);
 renderer.shadowMap.enabled = true;
-renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
 const scene = new THREE.Scene();
-const camera = new THREE.PerspectiveCamera(45, sceneContainer.clientWidth / sceneContainer.clientHeight, 0.1, 100);
+const camera = new THREE.PerspectiveCamera(45, sceneEl.clientWidth / sceneEl.clientHeight, 0.1, 100);
 camera.position.set(0, 1.5, 5);
 camera.lookAt(0, 0.8, 0);
 
-// --- Lighting ---
 scene.add(new THREE.AmbientLight(0x404060, 0.8));
-const keyLight = new THREE.DirectionalLight(0xffffff, 1.2);
-keyLight.position.set(3, 5, 4);
-keyLight.castShadow = true;
-scene.add(keyLight);
-const fillLight = new THREE.DirectionalLight(0x4fc3f7, 0.4);
-fillLight.position.set(-3, 2, -2);
-scene.add(fillLight);
-scene.add(new THREE.PointLight(0xff6f61, 0.6, 10).translateY(3).translateZ(-3));
+const kl = new THREE.DirectionalLight(0xffffff, 1.2); kl.position.set(3, 5, 4); kl.castShadow = true; scene.add(kl);
+scene.add(Object.assign(new THREE.DirectionalLight(0x4fc3f7, 0.4), { position: new THREE.Vector3(-3, 2, -2) }));
+scene.add(Object.assign(new THREE.PointLight(0xff6f61, 0.6, 10), { position: new THREE.Vector3(0, 3, -3) }));
 
-// --- Floor ---
-const floor = new THREE.Mesh(
-    new THREE.CircleGeometry(4, 64),
-    new THREE.MeshStandardMaterial({ color: 0x1a1a2e, roughness: 0.8 })
-);
-floor.rotation.x = -Math.PI / 2;
-floor.receiveShadow = true;
-scene.add(floor);
+const floor = new THREE.Mesh(new THREE.CircleGeometry(4, 64), new THREE.MeshStandardMaterial({ color: 0x1a1a2e, roughness: 0.8 }));
+floor.rotation.x = -Math.PI / 2; floor.receiveShadow = true; scene.add(floor);
 
-// --- Robot Builder ---
 function createRobot(color, x) {
-    const group = new THREE.Group();
-    const mainColor = new THREE.Color(color);
-    const darkColor = mainColor.clone().multiplyScalar(0.5);
-
-    const bodyMat = new THREE.MeshStandardMaterial({ color: mainColor, roughness: 0.3, metalness: 0.6 });
-    const body = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.35, 0.9, 16), bodyMat);
-    body.position.y = 0.7; body.castShadow = true;
-    group.add(body);
-
-    const ring = new THREE.Mesh(
-        new THREE.TorusGeometry(0.32, 0.03, 8, 32),
-        new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.2, metalness: 0.8 })
-    );
-    ring.position.y = 0.9; ring.rotation.x = Math.PI / 2;
-    group.add(ring);
-
-    const neck = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.08, 0.12, 0.15, 12),
-        new THREE.MeshStandardMaterial({ color: 0x333333, roughness: 0.4, metalness: 0.7 })
-    );
-    neck.position.y = 1.22;
-    group.add(neck);
-
-    const head = new THREE.Mesh(
-        new THREE.SphereGeometry(0.28, 24, 24),
-        new THREE.MeshStandardMaterial({ color: mainColor, roughness: 0.3, metalness: 0.5 })
-    );
-    head.position.y = 1.5; head.castShadow = true;
-    group.add(head);
-
-    // Eyes
-    const eyeMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.1, metalness: 0.9 });
-    const eyeRingMat = new THREE.MeshStandardMaterial({ color: 0xcccccc, metalness: 0.9, roughness: 0.2 });
+    const g = new THREE.Group();
+    const mc = new THREE.Color(color), dc = mc.clone().multiplyScalar(0.5);
+    const bm = new THREE.MeshStandardMaterial({ color: mc, roughness: 0.3, metalness: 0.6 });
+    const body = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.35, 0.9, 16), bm);
+    body.position.y = 0.7; body.castShadow = true; g.add(body);
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(0.32, 0.03, 8, 32), new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.2, metalness: 0.8 }));
+    ring.position.y = 0.9; ring.rotation.x = Math.PI/2; g.add(ring);
+    const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.12, 0.15, 12), new THREE.MeshStandardMaterial({ color: 0x333333, roughness: 0.4, metalness: 0.7 }));
+    neck.position.y = 1.22; g.add(neck);
+    const head = new THREE.Mesh(new THREE.SphereGeometry(0.28, 24, 24), new THREE.MeshStandardMaterial({ color: mc, roughness: 0.3, metalness: 0.5 }));
+    head.position.y = 1.5; head.castShadow = true; g.add(head);
+    const em = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.1, metalness: 0.9 });
+    const erm = new THREE.MeshStandardMaterial({ color: 0xcccccc, metalness: 0.9, roughness: 0.2 });
     for (const ex of [-0.1, 0.1]) {
-        group.add(Object.assign(new THREE.Mesh(new THREE.SphereGeometry(0.07, 16, 16), eyeMat), { position: new THREE.Vector3(ex, 1.52, 0.24) }));
-        group.add(Object.assign(new THREE.Mesh(new THREE.TorusGeometry(0.07, 0.015, 8, 16), eyeRingMat), { position: new THREE.Vector3(ex, 1.52, 0.24) }));
+        const eye = new THREE.Mesh(new THREE.SphereGeometry(0.07, 16, 16), em); eye.position.set(ex, 1.52, 0.24); g.add(eye);
+        const eyeR = new THREE.Mesh(new THREE.TorusGeometry(0.07, 0.015, 8, 16), erm); eyeR.position.set(ex, 1.52, 0.24); g.add(eyeR);
     }
-
-    // Antennas
-    const antMat = new THREE.MeshStandardMaterial({ color: 0x666666, metalness: 0.8, roughness: 0.3 });
-    const leftAnt = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.02, 0.3, 8), antMat);
-    leftAnt.position.set(-0.12, 1.85, 0); leftAnt.rotation.z = 0.2;
-    group.add(leftAnt);
-    const rightAnt = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.02, 0.3, 8), antMat);
-    rightAnt.position.set(0.12, 1.85, 0); rightAnt.rotation.z = -0.2;
-    group.add(rightAnt);
-
-    // Antenna tips
-    const tipMat = new THREE.MeshStandardMaterial({ color: mainColor, emissive: mainColor, emissiveIntensity: 0.5, roughness: 0.2 });
-    const leftTip = new THREE.Mesh(new THREE.SphereGeometry(0.035, 12, 12), tipMat);
-    leftTip.position.set(-0.15, 2.0, 0);
-    group.add(leftTip);
-    const rightTip = new THREE.Mesh(new THREE.SphereGeometry(0.035, 12, 12), tipMat);
-    rightTip.position.set(0.15, 2.0, 0);
-    group.add(rightTip);
-
-    // Base
-    const base = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.35, 0.4, 0.15, 16),
-        new THREE.MeshStandardMaterial({ color: darkColor, roughness: 0.4, metalness: 0.6 })
-    );
-    base.position.y = 0.15; base.castShadow = true;
-    group.add(base);
-
-    // Speaker grille
-    group.add(Object.assign(
-        new THREE.Mesh(new THREE.CircleGeometry(0.12, 24), new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.8, side: THREE.DoubleSide })),
-        { position: new THREE.Vector3(0, 0.6, 0.35) }
-    ));
-
-    group.position.x = x;
-    group.userData = { head, leftAnt, rightAnt, leftTip, rightTip, tipMat, body, talkPhase: 0 };
-    scene.add(group);
-    return group;
+    const am = new THREE.MeshStandardMaterial({ color: 0x666666, metalness: 0.8, roughness: 0.3 });
+    const la = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.02, 0.3, 8), am); la.position.set(-0.12, 1.85, 0); la.rotation.z = 0.2; g.add(la);
+    const ra = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.02, 0.3, 8), am); ra.position.set(0.12, 1.85, 0); ra.rotation.z = -0.2; g.add(ra);
+    const tm = new THREE.MeshStandardMaterial({ color: mc, emissive: mc, emissiveIntensity: 0.5, roughness: 0.2 });
+    const lt = new THREE.Mesh(new THREE.SphereGeometry(0.035, 12, 12), tm); lt.position.set(-0.15, 2.0, 0); g.add(lt);
+    const rt = new THREE.Mesh(new THREE.SphereGeometry(0.035, 12, 12), tm); rt.position.set(0.15, 2.0, 0); g.add(rt);
+    const base = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.4, 0.15, 16), new THREE.MeshStandardMaterial({ color: dc, roughness: 0.4, metalness: 0.6 }));
+    base.position.y = 0.15; base.castShadow = true; g.add(base);
+    const spk = new THREE.Mesh(new THREE.CircleGeometry(0.12, 24), new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.8, side: THREE.DoubleSide }));
+    spk.position.set(0, 0.6, 0.35); g.add(spk);
+    g.position.x = x;
+    g.userData = { head, la, ra, tm, talkPhase: 0 };
+    scene.add(g);
+    return g;
 }
 
-const robotA = createRobot(0x4caf50, -1.2);
-const robotB = createRobot(0x9c27b0, 1.2);
-robotA.rotation.y = 0.3;
-robotB.rotation.y = -0.3;
+const rA = createRobot(0x4caf50, -1.2);
+const rB = createRobot(0x9c27b0, 1.2);
+rA.rotation.y = 0.3; rB.rotation.y = -0.3;
 
-// --- Animation ---
-let currentSpeaker = -1;
-
-function idleAnim(robot, time, offset) {
-    const d = robot.userData;
-    robot.position.y = Math.sin(time * 0.8 + offset) * 0.02;
-    d.leftAnt.rotation.z = 0.2 + Math.sin(time * 1.2 + offset) * 0.05;
-    d.rightAnt.rotation.z = -0.2 + Math.sin(time * 1.2 + offset + 1) * 0.05;
-    d.tipMat.emissiveIntensity = 0.3 + Math.sin(time * 2) * 0.1;
-}
-
-function talkAnim(robot, time) {
-    const d = robot.userData;
-    d.talkPhase += 0.15;
-    d.head.position.y = 1.5 + Math.sin(d.talkPhase * 3) * 0.02;
-    d.head.rotation.x = Math.sin(d.talkPhase * 2) * 0.05;
-    d.head.rotation.z = Math.sin(d.talkPhase * 1.5) * 0.03;
-    d.leftAnt.rotation.z = 0.2 + Math.sin(d.talkPhase * 4) * 0.15;
-    d.rightAnt.rotation.z = -0.2 + Math.sin(d.talkPhase * 4 + 1) * 0.15;
-    d.tipMat.emissiveIntensity = 0.5 + Math.sin(d.talkPhase * 5) * 0.4;
-    robot.rotation.x = Math.sin(d.talkPhase * 1.2) * 0.03;
-}
-
-function listenAnim(robot, time) {
-    const d = robot.userData;
-    d.head.rotation.z = Math.sin(time * 0.5) * 0.08;
-    d.head.rotation.x = -0.05;
-    d.tipMat.emissiveIntensity = 0.3;
-}
+let curSpk = -1;
+function idleA(r, t, o) { const d = r.userData; r.position.y = Math.sin(t*0.8+o)*0.02; d.la.rotation.z = 0.2+Math.sin(t*1.2+o)*0.05; d.ra.rotation.z = -0.2+Math.sin(t*1.2+o+1)*0.05; d.tm.emissiveIntensity = 0.3+Math.sin(t*2)*0.1; }
+function talkA(r) { const d = r.userData; d.talkPhase += 0.15; d.head.position.y = 1.5+Math.sin(d.talkPhase*3)*0.02; d.head.rotation.x = Math.sin(d.talkPhase*2)*0.05; d.head.rotation.z = Math.sin(d.talkPhase*1.5)*0.03; d.la.rotation.z = 0.2+Math.sin(d.talkPhase*4)*0.15; d.ra.rotation.z = -0.2+Math.sin(d.talkPhase*4+1)*0.15; d.tm.emissiveIntensity = 0.5+Math.sin(d.talkPhase*5)*0.4; r.rotation.x = Math.sin(d.talkPhase*1.2)*0.03; }
+function lisA(r, t) { const d = r.userData; d.head.rotation.z = Math.sin(t*0.5)*0.08; d.head.rotation.x = -0.05; d.tm.emissiveIntensity = 0.3; }
 
 function animate() {
     requestAnimationFrame(animate);
     const t = performance.now() / 1000;
-    if (currentSpeaker === 0) { talkAnim(robotA, t); listenAnim(robotB, t); }
-    else if (currentSpeaker === 1) { talkAnim(robotB, t); listenAnim(robotA, t); }
-    else { idleAnim(robotA, t, 0); idleAnim(robotB, t, Math.PI); }
+    if (curSpk === 0) { talkA(rA); lisA(rB, t); }
+    else if (curSpk === 1) { talkA(rB); lisA(rA, t); }
+    else { idleA(rA, t, 0); idleA(rB, t, Math.PI); }
     renderer.render(scene, camera);
 }
 animate();
 
-// --- Resize ---
 function onResize() {
-    const w = sceneContainer.clientWidth, h = sceneContainer.clientHeight;
-    camera.aspect = w / h;
-    camera.updateProjectionMatrix();
-    renderer.setSize(w, h);
+    const w = sceneEl.clientWidth, h = sceneEl.clientHeight;
+    if (w === 0 || h === 0) return;
+    camera.aspect = w / h; camera.updateProjectionMatrix(); renderer.setSize(w, h);
 }
 window.addEventListener('resize', onResize);
-new ResizeObserver(onResize).observe(sceneContainer);
+new ResizeObserver(onResize).observe(sceneEl);
 
-// --- Audio + Timeline Engine ---
-let audioEl = null;
+// --- Audio Sync Engine ---
+let syncedAudio = null;
 let timeline = [];
-let totalDuration = 0;
-let activeLineIdx = -1;
+let totalDur = 0;
+let activeIdx = -1;
 
-const playBtn = document.getElementById('play-btn');
-const progressFill = document.getElementById('progress-fill');
-const progressBar = document.getElementById('progress-bar');
-const timeDisplay = document.getElementById('time-display');
-const transcriptPanel = document.getElementById('transcript-panel');
-const transcriptToggle = document.getElementById('transcript-toggle');
+const playBtn = document.getElementById('gt-play');
+const progFill = document.getElementById('gt-prog-fill');
+const progBar = document.getElementById('gt-prog');
+const timeDisp = document.getElementById('gt-time');
+const logPanel = document.getElementById('gt-log');
+const togEl = document.getElementById('gt-tog');
 
-// Transcript toggle
-let transcriptExpanded = true;
-transcriptToggle.addEventListener('click', () => {
-    transcriptExpanded = !transcriptExpanded;
-    transcriptPanel.style.display = transcriptExpanded ? 'block' : 'none';
-    transcriptToggle.classList.toggle('collapsed', !transcriptExpanded);
+let logOpen = true;
+togEl.addEventListener('click', () => {
+    logOpen = !logOpen;
+    logPanel.style.display = logOpen ? 'block' : 'none';
+    document.getElementById('gt-arrow').textContent = logOpen ? '▼' : '▶';
 });
 
-// Play/pause
+// Play/pause controls the synced Gradio audio
 playBtn.addEventListener('click', () => {
-    if (!audioEl) return;
-    if (audioEl.paused) { audioEl.play(); playBtn.textContent = '⏸'; }
-    else { audioEl.pause(); playBtn.textContent = '▶'; }
+    if (!syncedAudio) return;
+    if (syncedAudio.paused) syncedAudio.play();
+    else syncedAudio.pause();
 });
 
-// Progress bar seek
-progressBar.addEventListener('click', (e) => {
-    if (!audioEl || !totalDuration) return;
-    const rect = progressBar.getBoundingClientRect();
-    const pct = (e.clientX - rect.left) / rect.width;
-    audioEl.currentTime = pct * totalDuration;
+progBar.addEventListener('click', (e) => {
+    if (!syncedAudio || !totalDur) return;
+    const r = progBar.getBoundingClientRect();
+    syncedAudio.currentTime = ((e.clientX - r.left) / r.width) * totalDur;
 });
 
-function formatTime(sec) {
-    const m = Math.floor(sec / 60);
-    const s = Math.floor(sec % 60);
-    return `${m}:${s.toString().padStart(2, '0')}`;
-}
+function fmt(s) { return Math.floor(s/60) + ':' + String(Math.floor(s%60)).padStart(2,'0'); }
 
-function updatePlayback() {
-    if (!audioEl || audioEl.paused) return;
-    const elapsed = audioEl.currentTime;
+function tick() {
+    if (!syncedAudio) return;
+    const el = syncedAudio.currentTime;
+    const dur = syncedAudio.duration || totalDur;
+    
+    // Update button state
+    playBtn.textContent = syncedAudio.paused ? '▶' : '⏸';
     
     // Progress
-    const pct = totalDuration > 0 ? (elapsed / totalDuration) * 100 : 0;
-    progressFill.style.width = pct + '%';
-    timeDisplay.textContent = `${formatTime(elapsed)} / ${formatTime(totalDuration)}`;
-    
-    // Find active line
-    let newActive = -1;
+    progFill.style.width = (dur > 0 ? (el/dur)*100 : 0) + '%';
+    timeDisp.textContent = `${fmt(el)} / ${fmt(dur)}`;
+
+    // Find active line by current time
+    let ni = -1;
     for (let i = 0; i < timeline.length; i++) {
-        if (elapsed >= timeline[i].startTime && elapsed < timeline[i].startTime + timeline[i].duration) {
-            newActive = i;
-            break;
+        if (el >= timeline[i].st && el < timeline[i].st + timeline[i].dur) { ni = i; break; }
+    }
+
+    if (ni !== activeIdx) {
+        activeIdx = ni;
+        if (ni >= 0) {
+            const it = timeline[ni];
+            curSpk = it.speakerIdx;
+            document.getElementById('gt-sub-spk').textContent = it.speaker + ':';
+            document.getElementById('gt-sub-txt').textContent = it.line;
+            document.getElementById('gt-ind-l').classList.toggle('active', it.speakerIdx === 0);
+            document.getElementById('gt-ind-r').classList.toggle('active', it.speakerIdx === 1);
+            const lines = logPanel.querySelectorAll('.gt-line');
+            lines.forEach((el, i) => { el.classList.toggle('active', i === ni); el.classList.toggle('past', i < ni); });
+            if (lines[ni]) lines[ni].scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         }
     }
-    
-    if (newActive !== activeLineIdx) {
-        activeLineIdx = newActive;
-        if (newActive >= 0) {
-            const item = timeline[newActive];
-            currentSpeaker = item.speakerIdx;
-            updateSubtitle(item.speaker, item.line);
-            updateTranscriptHighlight(newActive);
-            updateSpeakerIndicators(item.speakerIdx);
-        }
+
+    // Check if ended
+    if (syncedAudio.ended) {
+        curSpk = -1;
+        playBtn.textContent = '▶';
+        document.getElementById('gt-sub-spk').textContent = '';
+        document.getElementById('gt-sub-txt').textContent = '✅ Episode complete!';
+        document.getElementById('gt-ind-l').classList.remove('active');
+        document.getElementById('gt-ind-r').classList.remove('active');
     }
-    
-    requestAnimationFrame(updatePlayback);
+
+    requestAnimationFrame(tick);
 }
 
-function updateSubtitle(speaker, line) {
-    document.getElementById('sub-speaker').textContent = speaker + ':';
-    document.getElementById('sub-text').textContent = line;
-}
-
-function updateSpeakerIndicators(idx) {
-    document.getElementById('speaker-left').classList.toggle('active', idx === 0);
-    document.getElementById('speaker-right').classList.toggle('active', idx === 1);
-}
-
-function updateTranscriptHighlight(idx) {
-    const lines = transcriptPanel.querySelectorAll('.transcript-line');
-    lines.forEach((el, i) => {
-        el.classList.toggle('active', i === idx);
-        el.classList.toggle('past', i < idx);
+function buildLog(data) {
+    logPanel.innerHTML = '';
+    data.forEach((it) => {
+        const d = document.createElement('div');
+        d.className = 'gt-line' + (it.speakerIdx === 1 ? ' spkb' : '');
+        d.innerHTML = `<span class="gt-ls">${it.speaker}:</span> ${it.line}`;
+        logPanel.appendChild(d);
     });
-    // Auto-scroll to active line
-    if (lines[idx]) {
-        lines[idx].scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-    }
-}
-
-function buildTranscript(data) {
-    transcriptPanel.innerHTML = '';
-    data.forEach((item, i) => {
-        const div = document.createElement('div');
-        div.className = 'transcript-line' + (item.speakerIdx === 1 ? ' speaker-b' : '');
-        div.innerHTML = `<span class="tl-speaker">${item.speaker}:</span> ${item.line}`;
-        transcriptPanel.appendChild(div);
-    });
-}
-
-// --- Click-to-play overlay (fallback when autoplay is blocked) ---
-let clickOverlay = null;
-
-function showClickOverlay() {
-    if (clickOverlay) return;
-    clickOverlay = document.createElement('div');
-    clickOverlay.id = 'click-overlay';
-    clickOverlay.style.cssText = `
-        position:absolute; top:0; left:0; right:0; bottom:0; z-index:100;
-        background:rgba(0,0,0,0.6); backdrop-filter:blur(4px);
-        display:flex; flex-direction:column; align-items:center; justify-content:center;
-        cursor:pointer; border-radius:12px;
-    `;
-    clickOverlay.innerHTML = `
-        <div style="width:70px;height:70px;border-radius:50%;background:#4fc3f7;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 20px rgba(79,195,247,0.5);">
-            <span style="font-size:32px;margin-left:4px;">▶</span>
-        </div>
-        <div style="color:#fff;font-size:14px;margin-top:14px;font-weight:600;">Click to start GeoTalk Live</div>
-        <div style="color:rgba(255,255,255,0.6);font-size:12px;margin-top:4px;">Episode ready</div>
-    `;
-    clickOverlay.addEventListener('click', () => {
-        if (audioEl) {
-            audioEl.play();
-        }
-        hideClickOverlay();
-    }, { once: true });
-
-    const mainContainer = document.getElementById('main-container');
-    mainContainer.style.position = 'relative';
-    mainContainer.appendChild(clickOverlay);
-
-    document.getElementById('sub-text').textContent = '🎙️ Episode ready — click to play!';
-}
-
-function hideClickOverlay() {
-    if (clickOverlay) {
-        clickOverlay.remove();
-        clickOverlay = null;
-    }
 }
 
 // --- Public API ---
 window.GeoTalkRobots = {
-    /**
-     * Load episode data and auto-play.
-     * @param {Array} data - [{speaker, line, duration, speakerIdx}]
-     * @param {string} speakerAName 
-     * @param {string} speakerBName
-     * @param {string} audioUrl - URL/data URI of the combined audio
-     */
-    start(data, speakerAName, speakerBName, audioUrl) {
-        // Set speaker labels
-        document.getElementById('speaker-left').textContent = speakerAName || 'Speaker A';
-        document.getElementById('speaker-right').textContent = speakerBName || 'Speaker B';
+    /** Load timeline data and set speaker labels */
+    loadTimeline(data, spkA, spkB) {
+        document.getElementById('gt-ind-l').textContent = spkA || 'Speaker A';
+        document.getElementById('gt-ind-r').textContent = spkB || 'Speaker B';
+        timeline = []; let cum = 0;
+        for (const it of data) { timeline.push({ ...it, st: cum, dur: it.duration }); cum += it.duration; }
+        totalDur = cum;
+        timeDisp.textContent = `0:00 / ${fmt(totalDur)}`;
+        buildLog(data);
+        document.getElementById('gt-sub-spk').textContent = '';
+        document.getElementById('gt-sub-txt').textContent = '🎙️ Episode loaded — playing...';
+    },
 
-        // Build timeline
-        timeline = [];
-        let cumTime = 0;
-        for (const item of data) {
-            timeline.push({ ...item, startTime: cumTime });
-            cumTime += item.duration;
+    /** Sync robot animations to an existing audio element (e.g. Gradio's) */
+    syncToAudio(audioElement) {
+        syncedAudio = audioElement;
+        // Start the tick loop
+        requestAnimationFrame(tick);
+        // If audio is already playing, update UI
+        if (!audioElement.paused) {
+            playBtn.textContent = '⏸';
         }
-        totalDuration = cumTime;
-        timeDisplay.textContent = `0:00 / ${formatTime(totalDuration)}`;
-
-        // Build transcript log
-        buildTranscript(data);
-
-        // Create audio element
-        if (audioEl) { audioEl.pause(); audioEl.remove(); }
-        audioEl = new Audio(audioUrl);
-        audioEl.addEventListener('play', () => { playBtn.textContent = '⏸'; requestAnimationFrame(updatePlayback); });
-        audioEl.addEventListener('pause', () => { playBtn.textContent = '▶'; });
-        audioEl.addEventListener('ended', () => {
-            playBtn.textContent = '▶';
-            currentSpeaker = -1;
-            document.getElementById('sub-text').textContent = '✅ Episode complete!';
-            document.getElementById('sub-speaker').textContent = '';
-            updateSpeakerIndicators(-1);
+        // Listen for play/pause events
+        audioElement.addEventListener('play', () => { playBtn.textContent = '⏸'; requestAnimationFrame(tick); });
+        audioElement.addEventListener('pause', () => { playBtn.textContent = '▶'; });
+        audioElement.addEventListener('ended', () => {
+            curSpk = -1; playBtn.textContent = '▶';
+            document.getElementById('gt-sub-spk').textContent = '';
+            document.getElementById('gt-sub-txt').textContent = '✅ Episode complete!';
         });
-
-        // Attempt auto-play; if blocked, show click-to-play overlay
-        function tryPlay() {
-            audioEl.play().then(() => {
-                // Success — hide overlay if shown
-                hideClickOverlay();
-            }).catch(() => {
-                // Autoplay blocked — show click-to-play overlay
-                showClickOverlay();
-            });
-        }
-
-        tryPlay();
     },
 
-    stop() {
-        if (audioEl) { audioEl.pause(); }
-        currentSpeaker = -1;
+    /** Convenience: start with own audio (standalone mode) */
+    start(data, spkA, spkB, audioUrl) {
+        this.loadTimeline(data, spkA, spkB);
+        const audio = new Audio(audioUrl);
+        this.syncToAudio(audio);
+        audio.play().catch(() => {
+            document.getElementById('gt-sub-txt').textContent = '▶ Press play to start';
+        });
     },
 
-    idle(message) {
-        currentSpeaker = -1;
-        document.getElementById('sub-speaker').textContent = '';
-        document.getElementById('sub-text').textContent = message || 'Waiting for episode...';
-        updateSpeakerIndicators(-1);
-        progressFill.style.width = '0%';
-        timeDisplay.textContent = '0:00 / 0:00';
-        transcriptPanel.innerHTML = `<div style="color:rgba(255,255,255,0.4);font-size:12px;padding:10px;">${message || 'Transcript will appear here...'}</div>`;
+    idle(msg) {
+        curSpk = -1;
+        document.getElementById('gt-sub-spk').textContent = '';
+        document.getElementById('gt-sub-txt').textContent = msg || 'Waiting for episode...';
+        document.getElementById('gt-ind-l').classList.remove('active');
+        document.getElementById('gt-ind-r').classList.remove('active');
+        progFill.style.width = '0%';
+        timeDisp.textContent = '0:00 / 0:00';
+        logPanel.innerHTML = `<div style="color:rgba(255,255,255,0.4);font-size:12px;padding:10px;">${msg || 'Transcript will appear here...'}</div>`;
     }
 };
 
-// Initial state
 window.GeoTalkRobots.idle();
 </script>
-</body>
-</html>

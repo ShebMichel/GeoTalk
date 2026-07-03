@@ -1,6 +1,5 @@
 """GeoTalk: AI-Generated Geoscience Debate Podcast"""
 
-import base64
 import json
 from pathlib import Path
 
@@ -18,7 +17,7 @@ from backend import (
 
 # --- Load the robot viewer HTML template ---
 ROBOT_HTML_PATH = Path(__file__).parent / "robot_viewer.html"
-ROBOT_HTML = ROBOT_HTML_PATH.read_text(encoding="utf-8")
+ROBOT_HTML_TEMPLATE = ROBOT_HTML_PATH.read_text(encoding="utf-8")
 
 # --- PROMPTS ---
 
@@ -59,17 +58,16 @@ Example: [{"speaker": "Prof. Hawkins", "line": "Now Sam, look at this beautiful 
 # --- Robot HTML Helpers ---
 
 
-def get_robot_idle_html(message="Waiting for episode..."):
-    """Return the robot viewer in idle state."""
-    return f"""<div style="width:100%;border-radius:12px;overflow:hidden;">
-<iframe id="robot-frame" srcdoc='{ROBOT_HTML.replace(chr(39), "&#39;")}' 
-    style="width:100%;height:520px;border:none;border-radius:12px;" 
-    sandbox="allow-scripts allow-same-origin" allow="autoplay"></iframe>
-</div>"""
+def get_robot_idle_html():
+    """Return the robot viewer in idle state (inline, no iframe)."""
+    return ROBOT_HTML_TEMPLATE
 
 
-def get_robot_live_html(results: list[dict], audio_path: str) -> str:
-    """Return robot viewer HTML with audio embedded and auto-play on load."""
+def get_robot_live_html(results: list[dict]) -> str:
+    """Return robot viewer with timeline data and audio-sync script.
+    The audio comes from Gradio's gr.Audio component (autoplay=True).
+    Our JS hooks into that audio element to drive the robot animations.
+    """
     # Build timeline data
     timeline_data = []
     speakers_seen = {}
@@ -87,38 +85,44 @@ def get_robot_live_html(results: list[dict], audio_path: str) -> str:
     speaker_a = speaker_names[0] if len(speaker_names) > 0 else "Speaker A"
     speaker_b = speaker_names[1] if len(speaker_names) > 1 else "Speaker B"
 
-    # Encode audio as base64 data URI for embedding in iframe
-    with open(audio_path, "rb") as f:
-        audio_b64 = base64.b64encode(f.read()).decode("utf-8")
-    audio_data_uri = f"data:audio/mpeg;base64,{audio_b64}"
-
     js_data = json.dumps(timeline_data)
 
-    # Inject auto-start script
-    auto_start_script = f"""
+    # This script finds Gradio's audio element and hooks into it
+    sync_script = f"""
 <script>
-window.addEventListener('load', function() {{
-    setTimeout(function() {{
-        if (window.GeoTalkRobots) {{
-            window.GeoTalkRobots.start(
-                {js_data},
-                "{speaker_a}",
-                "{speaker_b}",
-                "{audio_data_uri}"
-            );
+(function initGeoTalk() {{
+    // Wait for our GeoTalkRobots API to be ready
+    if (!window.GeoTalkRobots) {{
+        setTimeout(initGeoTalk, 200);
+        return;
+    }}
+
+    // Load timeline and speakers into the viewer
+    window.GeoTalkRobots.loadTimeline({js_data}, "{speaker_a}", "{speaker_b}");
+
+    // Find Gradio's audio element and sync to it
+    function findAndSync() {{
+        // Gradio renders audio in a <audio> tag inside the component
+        const audioEls = document.querySelectorAll('audio');
+        let targetAudio = null;
+        for (const a of audioEls) {{
+            if (a.src && a.src.length > 0) {{
+                targetAudio = a;
+                break;
+            }}
         }}
-    }}, 600);
-}});
-</script>
-</body>"""
+        if (targetAudio) {{
+            window.GeoTalkRobots.syncToAudio(targetAudio);
+        }} else {{
+            // Audio not rendered yet, retry
+            setTimeout(findAndSync, 300);
+        }}
+    }}
+    findAndSync();
+}})();
+</script>"""
 
-    modified_html = ROBOT_HTML.replace("</body>", auto_start_script)
-
-    return f"""<div style="width:100%;border-radius:12px;overflow:hidden;">
-<iframe id="robot-frame" srcdoc='{modified_html.replace(chr(39), "&#39;")}' 
-    style="width:100%;height:520px;border:none;border-radius:12px;" 
-    sandbox="allow-scripts allow-same-origin" allow="autoplay"></iframe>
-</div>"""
+    return ROBOT_HTML_TEMPLATE + sync_script
 
 
 # --- TAB FUNCTIONS ---
@@ -126,9 +130,9 @@ window.addEventListener('load', function() {{
 
 def run_core_talk(image):
     if image is None:
-        return "Please upload a core or thin section image.", get_robot_idle_html()
+        return None, "Please upload a core or thin section image.", get_robot_idle_html()
 
-    yield "🔬 Analyzing core image with AI vision...", get_robot_idle_html()
+    yield None, "🔬 Analyzing core image with AI vision...", get_robot_idle_html()
 
     description = describe_image(
         image,
@@ -137,29 +141,28 @@ def run_core_talk(image):
         "(laminations, fractures, fossils), color variations, and any diagenetic features.",
     )
 
-    yield f"📝 Generating debate script...\n\n*Image analysis:* {description[:200]}...", get_robot_idle_html()
+    yield None, f"📝 Generating debate script...\n\n*Image analysis:* {description[:200]}...", get_robot_idle_html()
 
     script = generate_debate_script(
         CORE_TALK_SYSTEM,
         f"The two petrographers are examining a core sample. Here is an AI-generated description of what they see:\n\n{description}\n\nWrite their debate about the interpretation.",
     )
 
-    yield "🎙️ Generating audio narration...", get_robot_idle_html()
+    yield None, "🎙️ Generating audio narration...", get_robot_idle_html()
 
     results = generate_audio_for_script(script, "core_talk")
     audio_path = combine_audio_files(results)
     transcript = format_transcript(results)
 
-    # Build the live robot viewer with embedded audio
-    robot_html = get_robot_live_html(results, audio_path)
-    yield transcript, robot_html
+    robot_html = get_robot_live_html(results)
+    yield audio_path, transcript, robot_html
 
 
 def run_log_doctor(las_file):
     if las_file is None:
-        return "Please upload a LAS file.", get_robot_idle_html()
+        return None, "Please upload a LAS file.", get_robot_idle_html()
 
-    yield "📊 Parsing LAS file...", get_robot_idle_html()
+    yield None, "📊 Parsing LAS file...", get_robot_idle_html()
 
     las = lasio.read(las_file.name)
 
@@ -177,28 +180,28 @@ def run_log_doctor(las_file):
 
     curve_summary = "\n".join(summary_lines)
 
-    yield f"📋 Log summary:\n{curve_summary}\n\n🩺 Generating diagnosis...", get_robot_idle_html()
+    yield None, f"📋 Log summary:\n{curve_summary}\n\n🩺 Generating diagnosis...", get_robot_idle_html()
 
     script = generate_debate_script(
         LOG_DOCTOR_SYSTEM,
         f"The two log doctors are examining this well log data:\n\n{curve_summary}\n\nWrite their medical-style consultation about what the logs reveal about the formation.",
     )
 
-    yield "🎙️ Generating audio narration...", get_robot_idle_html()
+    yield None, "🎙️ Generating audio narration...", get_robot_idle_html()
 
     results = generate_audio_for_script(script, "log_doctor")
     audio_path = combine_audio_files(results)
     transcript = format_transcript(results)
 
-    robot_html = get_robot_live_html(results, audio_path)
-    yield transcript, robot_html
+    robot_html = get_robot_live_html(results)
+    yield audio_path, transcript, robot_html
 
 
 def run_field_trip(image):
     if image is None:
-        return "Please upload an outcrop photo.", get_robot_idle_html()
+        return None, "Please upload an outcrop photo.", get_robot_idle_html()
 
-    yield "🏔️ Analyzing outcrop with AI vision...", get_robot_idle_html()
+    yield None, "🏔️ Analyzing outcrop with AI vision...", get_robot_idle_html()
 
     description = describe_image(
         image,
@@ -207,21 +210,21 @@ def run_field_trip(image):
         "weathering patterns, vegetation clues, scale indicators, and overall geological setting.",
     )
 
-    yield f"📝 Generating field trip narration...\n\n*Outcrop analysis:* {description[:200]}...", get_robot_idle_html()
+    yield None, f"📝 Generating field trip narration...\n\n*Outcrop analysis:* {description[:200]}...", get_robot_idle_html()
 
     script = generate_debate_script(
         FIELD_TRIP_SYSTEM,
         f"Prof. Hawkins and Sam are standing in front of this outcrop. Here is an AI description of what they see:\n\n{description}\n\nWrite their field trip conversation.",
     )
 
-    yield "🎙️ Generating audio narration...", get_robot_idle_html()
+    yield None, "🎙️ Generating audio narration...", get_robot_idle_html()
 
     results = generate_audio_for_script(script, "field_trip")
     audio_path = combine_audio_files(results)
     transcript = format_transcript(results)
 
-    robot_html = get_robot_live_html(results, audio_path)
-    yield transcript, robot_html
+    robot_html = get_robot_live_html(results)
+    yield audio_path, transcript, robot_html
 
 
 # --- GRADIO UI ---
@@ -242,7 +245,8 @@ Upload geological data and watch AI geoscientists debate the interpretation live
                 core_status = gr.Markdown(label="Status")
             with gr.Column(scale=2):
                 core_robots = gr.HTML(value=get_robot_idle_html(), label="🤖 GeoTalk Live")
-        core_btn.click(run_core_talk, inputs=core_image, outputs=[core_status, core_robots])
+                core_audio = gr.Audio(label="Episode Audio", type="filepath", autoplay=True)
+        core_btn.click(run_core_talk, inputs=core_image, outputs=[core_audio, core_status, core_robots])
 
     with gr.Tab("🩺 Log Doctor"):
         gr.Markdown("*Two log analysts diagnose your formation like doctors diagnosing a patient.*")
@@ -253,7 +257,8 @@ Upload geological data and watch AI geoscientists debate the interpretation live
                 log_status = gr.Markdown(label="Status")
             with gr.Column(scale=2):
                 log_robots = gr.HTML(value=get_robot_idle_html(), label="🤖 GeoTalk Live")
-        log_btn.click(run_log_doctor, inputs=las_input, outputs=[log_status, log_robots])
+                log_audio = gr.Audio(label="Episode Audio", type="filepath", autoplay=True)
+        log_btn.click(run_log_doctor, inputs=las_input, outputs=[log_audio, log_status, log_robots])
 
     with gr.Tab("🏕️ Field Trip FM"):
         gr.Markdown("*A professor and student narrate a virtual field trip to your outcrop.*")
@@ -264,7 +269,8 @@ Upload geological data and watch AI geoscientists debate the interpretation live
                 field_status = gr.Markdown(label="Status")
             with gr.Column(scale=2):
                 field_robots = gr.HTML(value=get_robot_idle_html(), label="🤖 GeoTalk Live")
-        field_btn.click(run_field_trip, inputs=outcrop_image, outputs=[field_status, field_robots])
+                field_audio = gr.Audio(label="Episode Audio", type="filepath", autoplay=True)
+        field_btn.click(run_field_trip, inputs=outcrop_image, outputs=[field_audio, field_status, field_robots])
 
     gr.Markdown(
         "---\n*Powered by Llama 3.2 Vision + Llama 3.1 + Edge-TTS on Hugging Face 🤗*\n"
