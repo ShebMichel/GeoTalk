@@ -12,7 +12,7 @@ from huggingface_hub import InferenceClient
 
 HF_TOKEN = os.environ.get("HF_TOKEN", "")
 TEXT_MODEL = "Qwen/Qwen2.5-72B-Instruct"
-VISION_MODEL = "CohereLabs/aya-vision-32b"
+VISION_MODEL = "meta-llama/Llama-3.2-11B-Vision-Instruct"
 
 client = InferenceClient(token=HF_TOKEN)
 
@@ -28,15 +28,40 @@ CHAIR_VOICE = "en-US-AndrewNeural"
 
 
 def encode_image(image_path: str) -> str:
-    with open(image_path, "rb") as f:
-        return base64.b64encode(f.read()).decode("utf-8")
+    """Encode image to base64, resizing if too large."""
+    from PIL import Image
+    import io
+
+    img = Image.open(image_path)
+    # Resize if larger than 1024px on any side (keeps API happy)
+    max_dim = 1024
+    if max(img.size) > max_dim:
+        img.thumbnail((max_dim, max_dim), Image.LANCZOS)
+
+    # Convert to JPEG for consistent format and smaller size
+    buffer = io.BytesIO()
+    img_format = "JPEG" if img.mode == "RGB" else "PNG"
+    if img.mode == "RGBA":
+        img_format = "PNG"
+    elif img.mode != "RGB":
+        img = img.convert("RGB")
+        img_format = "JPEG"
+    img.save(buffer, format=img_format, quality=85)
+    return base64.b64encode(buffer.getvalue()).decode("utf-8")
 
 
 def describe_image(image_path: str, context: str) -> str:
     """Use vision model to describe an uploaded image."""
+    from PIL import Image
+
     b64 = encode_image(image_path)
-    ext = Path(image_path).suffix.lower().strip(".")
-    mime = f"image/{'jpeg' if ext in ('jpg', 'jpeg') else ext}"
+
+    # Determine mime based on what encode_image outputs
+    img = Image.open(image_path)
+    if img.mode == "RGBA":
+        mime = "image/png"
+    else:
+        mime = "image/jpeg"
 
     response = client.chat_completion(
         model=VISION_MODEL,
