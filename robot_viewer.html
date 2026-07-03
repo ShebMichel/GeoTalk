@@ -232,17 +232,18 @@ progBar.addEventListener('click', (e) => {
 
 function fmt(s) { return Math.floor(s/60) + ':' + String(Math.floor(s%60)).padStart(2,'0'); }
 
-function tick() {
+// Continuous sync loop - runs every 100ms to stay in sync with audio
+setInterval(function tick() {
     if (!syncedAudio) return;
     const el = syncedAudio.currentTime;
     const dur = syncedAudio.duration || totalDur;
-    
-    // Update button state
-    playBtn.textContent = syncedAudio.paused ? '▶' : '⏸';
-    
-    // Progress
+
+    // Update progress bar and time
     progFill.style.width = (dur > 0 ? (el/dur)*100 : 0) + '%';
     timeDisp.textContent = `${fmt(el)} / ${fmt(dur)}`;
+
+    // If audio is paused, don't update speaker animations
+    if (syncedAudio.paused && !syncedAudio.ended) return;
 
     // Find active line by current time
     let ni = -1;
@@ -264,19 +265,7 @@ function tick() {
             if (lines[ni]) lines[ni].scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         }
     }
-
-    // Check if ended
-    if (syncedAudio.ended) {
-        curSpk = -1;
-        playBtn.textContent = '▶';
-        document.getElementById('gt-sub-spk').textContent = '';
-        document.getElementById('gt-sub-txt').textContent = '✅ Episode complete!';
-        document.getElementById('gt-ind-l').classList.remove('active');
-        document.getElementById('gt-ind-r').classList.remove('active');
-    }
-
-    requestAnimationFrame(tick);
-}
+}, 100);
 
 function buildLog(data) {
     logPanel.innerHTML = '';
@@ -301,24 +290,28 @@ window.GeoTalkRobots = {
         buildLog(data);
         document.getElementById('gt-sub-spk').textContent = '';
         document.getElementById('gt-sub-txt').textContent = '🎙️ Episode loaded — playing...';
+        activeIdx = -1;
     },
 
     /** Sync robot animations to an existing audio element (e.g. Gradio's) */
     syncToAudio(audioElement) {
+        // Avoid double-binding
+        if (syncedAudio === audioElement) return;
         syncedAudio = audioElement;
-        // Start the tick loop
-        requestAnimationFrame(tick);
+
         // If audio is already playing, update UI
         if (!audioElement.paused) {
             playBtn.textContent = '⏸';
         }
         // Listen for play/pause events
-        audioElement.addEventListener('play', () => { playBtn.textContent = '⏸'; requestAnimationFrame(tick); });
+        audioElement.addEventListener('play', () => { playBtn.textContent = '⏸'; });
         audioElement.addEventListener('pause', () => { playBtn.textContent = '▶'; });
         audioElement.addEventListener('ended', () => {
             curSpk = -1; playBtn.textContent = '▶';
             document.getElementById('gt-sub-spk').textContent = '';
             document.getElementById('gt-sub-txt').textContent = '✅ Episode complete!';
+            document.getElementById('gt-ind-l').classList.remove('active');
+            document.getElementById('gt-ind-r').classList.remove('active');
         });
     },
 
