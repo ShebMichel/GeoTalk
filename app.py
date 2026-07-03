@@ -130,27 +130,39 @@ def run_core_talk(image):
 
     yield "🔬 Analyzing core image with AI vision...", get_idle_viewer()
 
-    description = describe_image(
-        image,
-        "Describe this geological core or thin section image in detail. "
-        "Focus on: lithology, texture, grain size, sorting, visible structures "
-        "(laminations, fractures, fossils), color variations, and any diagenetic features.",
-    )
+    try:
+        description = describe_image(
+            image,
+            "Describe this geological core or thin section image in detail. "
+            "Focus on: lithology, texture, grain size, sorting, visible structures "
+            "(laminations, fractures, fossils), color variations, and any diagenetic features.",
+        )
+    except Exception as e:
+        yield f"❌ Vision model error: {e}", get_idle_viewer()
+        return
 
     yield f"📝 Generating debate script...\n\n*Image analysis:* {description[:200]}...", get_idle_viewer()
 
-    script = generate_debate_script(
-        CORE_TALK_SYSTEM,
-        f"The two petrographers are examining a core sample. Here is an AI-generated description of what they see:\n\n{description}\n\nWrite their debate about the interpretation.",
-    )
+    try:
+        script = generate_debate_script(
+            CORE_TALK_SYSTEM,
+            f"The two petrographers are examining a core sample. Here is an AI-generated description of what they see:\n\n{description}\n\nWrite their debate about the interpretation.",
+        )
+    except Exception as e:
+        yield f"❌ Script generation error: {e}", get_idle_viewer()
+        return
 
     yield "🎙️ Generating audio narration...", get_idle_viewer()
 
-    results = generate_audio_for_script(script, "core_talk")
-    audio_path = combine_audio_files(results)
-    transcript = format_transcript(results)
+    try:
+        results = generate_audio_for_script(script, "core_talk")
+        audio_path = combine_audio_files(results)
+        transcript = format_transcript(results)
+        viewer_html = build_live_viewer(results, audio_path)
+    except Exception as e:
+        yield f"❌ Audio generation error: {e}", get_idle_viewer()
+        return
 
-    viewer_html = build_live_viewer(results, audio_path)
     yield transcript, viewer_html
 
 
@@ -160,7 +172,11 @@ def run_log_doctor(las_file):
 
     yield "📊 Parsing LAS file...", get_idle_viewer()
 
-    las = lasio.read(las_file.name)
+    try:
+        las = lasio.read(las_file.name)
+    except Exception as e:
+        yield f"❌ LAS parsing error: {e}", get_idle_viewer()
+        return
 
     summary_lines = [f"**Well:** {las.well.WELL.value if hasattr(las.well, 'WELL') else 'Unknown'}"]
     summary_lines.append(f"**Depth range:** {las.index[0]:.1f} - {las.index[-1]:.1f} {las.index_unit}")
@@ -177,18 +193,26 @@ def run_log_doctor(las_file):
 
     yield f"📋 Log summary:\n{curve_summary}\n\n🩺 Generating diagnosis...", get_idle_viewer()
 
-    script = generate_debate_script(
-        LOG_DOCTOR_SYSTEM,
-        f"The two log doctors are examining this well log data:\n\n{curve_summary}\n\nWrite their medical-style consultation about what the logs reveal about the formation.",
-    )
+    try:
+        script = generate_debate_script(
+            LOG_DOCTOR_SYSTEM,
+            f"The two log doctors are examining this well log data:\n\n{curve_summary}\n\nWrite their medical-style consultation about what the logs reveal about the formation.",
+        )
+    except Exception as e:
+        yield f"❌ Script generation error: {e}", get_idle_viewer()
+        return
 
     yield "🎙️ Generating audio narration...", get_idle_viewer()
 
-    results = generate_audio_for_script(script, "log_doctor")
-    audio_path = combine_audio_files(results)
-    transcript = format_transcript(results)
+    try:
+        results = generate_audio_for_script(script, "log_doctor")
+        audio_path = combine_audio_files(results)
+        transcript = format_transcript(results)
+        viewer_html = build_live_viewer(results, audio_path)
+    except Exception as e:
+        yield f"❌ Audio generation error: {e}", get_idle_viewer()
+        return
 
-    viewer_html = build_live_viewer(results, audio_path)
     yield transcript, viewer_html
 
 
@@ -198,27 +222,39 @@ def run_field_trip(image):
 
     yield "🏔️ Analyzing outcrop with AI vision...", get_idle_viewer()
 
-    description = describe_image(
-        image,
-        "Describe this geological outcrop photo in detail. "
-        "Focus on: rock types visible, bedding orientation, fold structures, faults, "
-        "weathering patterns, vegetation clues, scale indicators, and overall geological setting.",
-    )
+    try:
+        description = describe_image(
+            image,
+            "Describe this geological outcrop photo in detail. "
+            "Focus on: rock types visible, bedding orientation, fold structures, faults, "
+            "weathering patterns, vegetation clues, scale indicators, and overall geological setting.",
+        )
+    except Exception as e:
+        yield f"❌ Vision model error: {e}", get_idle_viewer()
+        return
 
     yield f"📝 Generating field trip narration...\n\n*Outcrop analysis:* {description[:200]}...", get_idle_viewer()
 
-    script = generate_debate_script(
-        FIELD_TRIP_SYSTEM,
-        f"Prof. Hawkins and Sam are standing in front of this outcrop. Here is an AI description of what they see:\n\n{description}\n\nWrite their field trip conversation.",
-    )
+    try:
+        script = generate_debate_script(
+            FIELD_TRIP_SYSTEM,
+            f"Prof. Hawkins and Sam are standing in front of this outcrop. Here is an AI description of what they see:\n\n{description}\n\nWrite their field trip conversation.",
+        )
+    except Exception as e:
+        yield f"❌ Script generation error: {e}", get_idle_viewer()
+        return
 
     yield "🎙️ Generating audio narration...", get_idle_viewer()
 
-    results = generate_audio_for_script(script, "field_trip")
-    audio_path = combine_audio_files(results)
-    transcript = format_transcript(results)
+    try:
+        results = generate_audio_for_script(script, "field_trip")
+        audio_path = combine_audio_files(results)
+        transcript = format_transcript(results)
+        viewer_html = build_live_viewer(results, audio_path)
+    except Exception as e:
+        yield f"❌ Audio generation error: {e}", get_idle_viewer()
+        return
 
-    viewer_html = build_live_viewer(results, audio_path)
     yield transcript, viewer_html
 
 
