@@ -38,6 +38,17 @@ body { background:#111; font-family:'Segoe UI',system-ui,sans-serif; overflow:hi
     border-color:#9c27b0;
     box-shadow:0 0 20px rgba(156,39,176,0.3);
 }
+.panel.active-chair {
+    border-color:#ff9800;
+    box-shadow:0 0 20px rgba(255,152,0,0.3);
+}
+.panel-chair {
+    flex:0.4; display:flex; flex-direction:column; align-items:center; justify-content:center;
+    background:linear-gradient(180deg, #1a2332 0%, #0d1520 100%);
+}
+.chair-icon { font-size:48px; opacity:0.6; transition:opacity 0.3s; }
+.panel-chair.active-chair .chair-icon { opacity:1; animation:chair-pulse 1s ease-in-out infinite; }
+@keyframes chair-pulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.1)} }
 .panel canvas { width:100%; height:100%; display:block; }
 .panel-label {
     position:absolute; bottom:12px; left:12px;
@@ -57,6 +68,7 @@ body { background:#111; font-family:'Segoe UI',system-ui,sans-serif; overflow:hi
     display:flex; align-items:center; gap:12px;
 }
 #caption-bar .cap-speaker { font-weight:700; font-size:14px; color:#4fc3f7; white-space:nowrap; }
+#caption-bar .cap-speaker.chair { color:#ff9800; }
 #caption-bar .cap-text { font-size:14px; color:#e0e0e0; line-height:1.4; }
 
 /* Controls */
@@ -87,6 +99,13 @@ body { background:#111; font-family:'Segoe UI',system-ui,sans-serif; overflow:hi
             <div class="panel-label">
                 <div class="dot"></div>
                 <span class="name" id="name-a">__SPEAKER_A__</span>
+            </div>
+        </div>
+        <div class="panel panel-chair" id="panel-chair">
+            <div class="chair-icon">🎙️</div>
+            <div class="panel-label">
+                <div class="dot"></div>
+                <span class="name">The Chair</span>
             </div>
         </div>
         <div class="panel" id="panel-b">
@@ -248,6 +267,7 @@ const progBar = document.getElementById('progress');
 const timeEl = document.getElementById('time');
 const panelA = document.getElementById('panel-a');
 const panelB = document.getElementById('panel-b');
+const panelChair = document.getElementById('panel-chair');
 const capSpk = document.getElementById('cap-spk');
 const capTxt = document.getElementById('cap-txt');
 
@@ -259,7 +279,7 @@ audio.addEventListener('play', () => { playBtn.textContent = '⏸'; });
 audio.addEventListener('pause', () => { playBtn.textContent = '▶'; });
 audio.addEventListener('ended', () => {
     playBtn.textContent = '▶'; curSpk = -1;
-    panelA.classList.remove('active'); panelB.classList.remove('active-b');
+    panelA.classList.remove('active'); panelB.classList.remove('active-b'); panelChair.classList.remove('active-chair');
     capSpk.textContent = ''; capTxt.textContent = '✅ Episode complete!';
 });
 
@@ -287,11 +307,13 @@ setInterval(() => {
         activeIdx = ni;
         if (ni >= 0) {
             const it = timeline[ni];
-            curSpk = it.speakerIdx;
+            curSpk = it.speakerIdx === 2 ? -1 : it.speakerIdx; // chair doesn't animate robots
             capSpk.textContent = it.speaker + ':';
+            capSpk.className = 'cap-speaker' + (it.speakerIdx === 2 ? ' chair' : '');
             capTxt.textContent = it.line;
             panelA.classList.toggle('active', it.speakerIdx === 0);
             panelB.classList.toggle('active-b', it.speakerIdx === 1);
+            panelChair.classList.toggle('active-chair', it.speakerIdx === 2);
         }
     }
 }, 80);

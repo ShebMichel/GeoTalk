@@ -19,37 +19,48 @@ from backend import (
 # --- PROMPTS ---
 
 CORE_TALK_SYSTEM = """You are a scriptwriter for a geoscience podcast called "Core Talk".
-Write a debate between two petrographers examining a rock core/thin section:
+Write a debate between two petrographers examining a rock core/thin section, moderated by a chair.
+
+Characters:
+- The Chair: professional moderator who opens by introducing the topic and both speakers, then occasionally guides the discussion
 - Dr. Elena Vasquez: sequence stratigrapher, focuses on depositional environments and facies
 - Dr. Marcus Chen: structural/diagenetic specialist, focuses on post-depositional alteration
 
-They should debate the interpretation of what they observe, respectfully disagree on key points,
-and arrive at a partial consensus. Keep it educational, engaging, and scientifically accurate.
+The Chair should open with a brief introduction (1-2 lines), introduce both speakers and the sample,
+then let them debate. The Chair may interject once mid-way to steer the discussion or ask a probing question,
+and closes with a brief wrap-up. The debaters should respectfully disagree on key points and arrive at a partial consensus.
 
-Return ONLY a JSON array of objects with "speaker" and "line" keys. 8-12 exchanges total.
-Example: [{"speaker": "Dr. Elena Vasquez", "line": "Looking at this core..."}, ...]"""
+Return ONLY a JSON array of objects with "speaker" and "line" keys. 10-14 exchanges total.
+Example: [{"speaker": "The Chair", "line": "Welcome to Core Talk..."}, {"speaker": "Dr. Elena Vasquez", "line": "Looking at this core..."}, ...]"""
 
 LOG_DOCTOR_SYSTEM = """You are a scriptwriter for a geoscience podcast called "Log Doctor".
-Write a consultation between two well log analysts diagnosing a formation like doctors diagnosing a patient:
+Write a consultation between two well log analysts, moderated by a chair.
+
+Characters:
+- The Chair: professional moderator who opens by introducing the case and both specialists, guides the consultation
 - Dr. Resistivity (Dr. R): senior petrophysicist, speaks in medical metaphors, focuses on resistivity and porosity
 - Dr. Gamma (Dr. G): sedimentologist-turned-log-analyst, focuses on lithology indicators and GR patterns
 
-They discuss the well log data like a medical case: the formation is the "patient", anomalies are "symptoms",
-and their interpretation is the "diagnosis". They should identify pay zones, fluid contacts, and lithology.
+The Chair opens by presenting the "patient" (the formation) and introducing the two doctors.
+They discuss the well log data like a medical case: anomalies are "symptoms", interpretation is the "diagnosis".
+The Chair may ask a clarifying question mid-way and wraps up with the final diagnosis summary.
 
-Return ONLY a JSON array of objects with "speaker" and "line" keys. 8-12 exchanges total.
-Example: [{"speaker": "Dr. Resistivity", "line": "The patient presents with..."}, ...]"""
+Return ONLY a JSON array of objects with "speaker" and "line" keys. 10-14 exchanges total.
+Example: [{"speaker": "The Chair", "line": "Welcome doctors, we have an interesting case today..."}, {"speaker": "Dr. Resistivity", "line": "The patient presents with..."}, ...]"""
 
 FIELD_TRIP_SYSTEM = """You are a scriptwriter for a geoscience podcast called "Field Trip FM".
-Write a narrated virtual field trip between:
+Write a narrated virtual field trip, moderated by a chair.
+
+Characters:
+- The Chair: podcast host who introduces the episode, the location, and both guests before handing over
 - Prof. Hawkins: enthusiastic geology professor, loves storytelling, connects outcrops to Earth history
 - Sam: curious grad student, asks insightful questions, makes pop-culture analogies
 
-They're standing in front of an outcrop and discussing what they see, the geological history it records,
-and what processes formed it. Prof. Hawkins teaches while Sam asks questions and makes observations.
+The Chair opens with a brief welcome, sets the scene (location, geological context), introduces Prof. Hawkins and Sam,
+then lets them explore. The Chair may pop in once to ask "what should our listeners look for?" and closes the episode.
 
-Return ONLY a JSON array of objects with "speaker" and "line" keys. 8-12 exchanges total.
-Example: [{"speaker": "Prof. Hawkins", "line": "Now Sam, look at this beautiful exposure..."}, ...]"""
+Return ONLY a JSON array of objects with "speaker" and "line" keys. 10-14 exchanges total.
+Example: [{"speaker": "The Chair", "line": "Welcome to Field Trip FM! Today we're at..."}, {"speaker": "Prof. Hawkins", "line": "Now Sam, look at this beautiful exposure..."}, ...]"""
 
 
 # --- Build the live viewer HTML ---
@@ -72,9 +83,14 @@ def build_live_viewer(results: list[dict], audio_path: str) -> str:
         if item["speaker"] not in speakers_seen:
             speakers_seen[item["speaker"]] = item.get("speakerIdx", len(speakers_seen))
 
-    speaker_names = sorted(speakers_seen.keys(), key=lambda s: speakers_seen[s])
-    speaker_a = speaker_names[0] if len(speaker_names) > 0 else "Speaker A"
-    speaker_b = speaker_names[1] if len(speaker_names) > 1 else "Speaker B"
+    # Get debater names (idx 0 and 1), skip chair (idx 2)
+    speaker_a = "Speaker A"
+    speaker_b = "Speaker B"
+    for name, idx in speakers_seen.items():
+        if idx == 0:
+            speaker_a = name
+        elif idx == 1:
+            speaker_b = name
 
     # Encode audio
     with open(audio_path, "rb") as f:

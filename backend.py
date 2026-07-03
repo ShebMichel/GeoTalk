@@ -16,12 +16,15 @@ VISION_MODEL = "CohereLabs/aya-vision-32b"
 
 client = InferenceClient(token=HF_TOKEN)
 
-# Edge-TTS voice pairs for distinct speakers
+# Edge-TTS voice pairs for distinct speakers + chair voice
 VOICE_PAIRS = {
     "core_talk": ("en-US-GuyNeural", "en-US-JennyNeural"),
     "log_doctor": ("en-GB-RyanNeural", "en-GB-SoniaNeural"),
     "field_trip": ("en-US-DavisNeural", "en-US-AriaNeural"),
 }
+
+# Chair/host voice (neutral, authoritative)
+CHAIR_VOICE = "en-US-AndrewNeural"
 
 
 def encode_image(image_path: str) -> str:
@@ -103,14 +106,23 @@ def _get_audio_duration(audio_path: str) -> float:
 def generate_audio_for_script(script: list[dict], mode: str) -> list[dict]:
     """Generate TTS audio files for each line in the script.
     Returns list of {speaker, line, audio_path, duration, speakerIdx} dicts.
+    speakerIdx: 0=left, 1=right, 2=chair/center
     """
     voice_a, voice_b = VOICE_PAIRS.get(mode, VOICE_PAIRS["core_talk"])
     speakers = list(dict.fromkeys(item["speaker"] for item in script))
+
+    # First speaker is the Chair (idx 2), next two are the debaters (idx 0, 1)
     voice_map = {}
     speaker_idx_map = {}
-    for i, speaker in enumerate(speakers):
-        voice_map[speaker] = voice_a if i % 2 == 0 else voice_b
-        speaker_idx_map[speaker] = i % 2  # 0 = left robot, 1 = right robot
+    debater_count = 0
+    for speaker in speakers:
+        if "chair" in speaker.lower() or "host" in speaker.lower() or "moderator" in speaker.lower():
+            voice_map[speaker] = CHAIR_VOICE
+            speaker_idx_map[speaker] = 2  # center/chair
+        else:
+            voice_map[speaker] = voice_a if debater_count % 2 == 0 else voice_b
+            speaker_idx_map[speaker] = debater_count % 2
+            debater_count += 1
 
     tmp_dir = tempfile.mkdtemp(prefix="geotalk_")
     results = []
