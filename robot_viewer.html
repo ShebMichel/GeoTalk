@@ -1,341 +1,305 @@
-<!-- GeoTalk Robot Viewer - Inline Component -->
-<div id="geotalk-viewer" style="width:100%;border-radius:12px;overflow:hidden;position:relative;">
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
 <style>
-#geotalk-viewer * { margin: 0; padding: 0; box-sizing: border-box; }
-#geotalk-viewer { font-family: 'Segoe UI', system-ui, sans-serif; }
-#gt-main {
-    width: 100%;
-    height: 520px;
-    display: flex;
-    flex-direction: column;
-    border-radius: 12px;
-    overflow: hidden;
+* { margin:0; padding:0; box-sizing:border-box; }
+body { background:#111; font-family:'Segoe UI',system-ui,sans-serif; overflow:hidden; }
+#app {
+    width:100%; height:640px; display:flex; flex-direction:column;
+    background:#111; color:#fff;
 }
-#gt-scene {
-    width: 100%;
-    height: 320px;
-    position: relative;
-    flex-shrink: 0;
-    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+/* Header */
+#header {
+    display:flex; align-items:center; justify-content:space-between;
+    padding:12px 20px; background:#1a1a1a; border-bottom:1px solid #333;
 }
-#gt-scene canvas { display: block; width: 100%; height: 100%; }
-#gt-subtitle {
-    position: absolute;
-    bottom: 0; left: 0; right: 0;
-    background: rgba(0,0,0,0.75);
-    backdrop-filter: blur(8px);
-    color: #fff;
-    padding: 10px 16px;
-    font-size: 13px;
-    line-height: 1.4;
-    min-height: 44px;
-    display: flex;
-    align-items: center;
-    gap: 8px;
+#header .title { font-size:15px; font-weight:700; }
+#header .live-badge {
+    display:flex; align-items:center; gap:6px; font-size:12px; color:#aaa;
 }
-#gt-subtitle .gt-spk { font-weight: 700; color: #4fc3f7; white-space: nowrap; flex-shrink: 0; }
-#gt-subtitle .gt-txt { color: #e0e0e0; }
-.gt-ind {
-    position: absolute; top: 10px;
-    padding: 5px 12px; border-radius: 16px;
-    font-size: 11px; font-weight: 600; color: #fff;
-    backdrop-filter: blur(4px);
-    transition: opacity 0.3s, transform 0.3s;
-    opacity: 0.5;
-}
-.gt-ind.active { opacity: 1; transform: scale(1.08); }
-#gt-ind-l { left: 10px; background: rgba(76, 175, 80, 0.85); }
-#gt-ind-r { right: 10px; background: rgba(156, 39, 176, 0.85); }
-#gt-badge {
-    position: absolute; top: 10px; left: 50%; transform: translateX(-50%);
-    padding: 4px 12px; border-radius: 12px;
-    background: rgba(255,255,255,0.15); backdrop-filter: blur(4px);
-    font-size: 11px; color: rgba(255,255,255,0.8);
-}
-#gt-controls {
-    display: flex; align-items: center; gap: 10px;
-    padding: 8px 14px; background: #1e1e2e;
-    border-top: 1px solid rgba(255,255,255,0.08); flex-shrink: 0;
-}
-#gt-play {
-    width: 36px; height: 36px; border-radius: 50%; border: none;
-    background: #4fc3f7; color: #111; font-size: 16px;
-    cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0;
-}
-#gt-play:hover { background: #81d4fa; }
-#gt-prog { flex: 1; height: 6px; background: rgba(255,255,255,0.15); border-radius: 3px; cursor: pointer; }
-#gt-prog-fill { height: 100%; background: #4fc3f7; border-radius: 3px; width: 0%; transition: width 0.2s linear; }
-#gt-time { font-size: 11px; color: rgba(255,255,255,0.6); white-space: nowrap; flex-shrink: 0; }
-#gt-tog {
-    display: flex; align-items: center; justify-content: space-between;
-    padding: 6px 14px; background: #16162a; cursor: pointer; user-select: none;
-    border-top: 1px solid rgba(255,255,255,0.05); flex-shrink: 0;
-}
-#gt-tog span { font-size: 12px; color: rgba(255,255,255,0.7); font-weight: 600; }
-#gt-log {
-    flex: 1; overflow-y: auto; background: #12121e; padding: 10px 14px; min-height: 0;
-}
-#gt-log::-webkit-scrollbar { width: 6px; }
-#gt-log::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 3px; }
-.gt-line {
-    padding: 6px 0; font-size: 12px; line-height: 1.5;
-    color: rgba(255,255,255,0.4);
-    border-bottom: 1px solid rgba(255,255,255,0.03);
-    transition: color 0.3s, background 0.3s;
-}
-.gt-line.active { color: #fff; background: rgba(79,195,247,0.08); border-radius: 6px; padding: 6px 8px; }
-.gt-line.past { color: rgba(255,255,255,0.6); }
-.gt-line .gt-ls { font-weight: 700; color: #4fc3f7; }
-.gt-line.spkb .gt-ls { color: #ce93d8; }
-</style>
+#header .live-dot { width:8px; height:8px; border-radius:50%; background:#e53935; animation:pulse 1.5s infinite; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
 
-<div id="gt-main">
-    <div id="gt-scene">
-        <canvas id="gt-canvas"></canvas>
-        <div id="gt-ind-l" class="gt-ind">Speaker A</div>
-        <div id="gt-ind-r" class="gt-ind">Speaker B</div>
-        <div id="gt-badge">🎙️ GeoTalk Live</div>
-        <div id="gt-subtitle">
-            <span class="gt-spk" id="gt-sub-spk"></span>
-            <span class="gt-txt" id="gt-sub-txt">Waiting for episode...</span>
+/* Robot panels - side by side like video call */
+#panels {
+    flex:1; display:flex; gap:8px; padding:8px; min-height:0;
+}
+.panel {
+    flex:1; position:relative; border-radius:12px; overflow:hidden;
+    border:2px solid #333; transition:border-color 0.3s, box-shadow 0.3s;
+    background:linear-gradient(180deg, #1a2332 0%, #0d1520 100%);
+}
+.panel.active {
+    border-color:#4caf50;
+    box-shadow:0 0 20px rgba(76,175,80,0.3);
+}
+.panel.active-b {
+    border-color:#9c27b0;
+    box-shadow:0 0 20px rgba(156,39,176,0.3);
+}
+.panel canvas { width:100%; height:100%; display:block; }
+.panel-label {
+    position:absolute; bottom:12px; left:12px;
+    display:flex; align-items:center; gap:8px;
+    background:rgba(0,0,0,0.7); backdrop-filter:blur(6px);
+    padding:6px 12px; border-radius:20px;
+}
+.panel-label .dot { width:8px; height:8px; border-radius:50%; background:#555; transition:background 0.3s; }
+.panel.active .panel-label .dot, .panel.active-b .panel-label .dot { background:#4caf50; }
+.panel-label .name { font-size:12px; font-weight:700; }
+.panel-label .desc { font-size:11px; color:#999; }
+
+/* Caption bar */
+#caption-bar {
+    padding:12px 20px; min-height:60px;
+    background:#1a1a1a; border-top:1px solid #333;
+    display:flex; align-items:center; gap:12px;
+}
+#caption-bar .cap-speaker { font-weight:700; font-size:14px; color:#4fc3f7; white-space:nowrap; }
+#caption-bar .cap-text { font-size:14px; color:#e0e0e0; line-height:1.4; }
+
+/* Controls */
+#controls {
+    display:flex; align-items:center; gap:12px;
+    padding:8px 20px; background:#111; border-top:1px solid #222;
+}
+#play-btn {
+    width:36px; height:36px; border-radius:50%; border:none;
+    background:#4fc3f7; color:#111; font-size:16px; cursor:pointer;
+    display:flex; align-items:center; justify-content:center;
+}
+#play-btn:hover { background:#81d4fa; }
+#progress { flex:1; height:4px; background:#333; border-radius:2px; cursor:pointer; position:relative; }
+#progress-fill { height:100%; background:#4fc3f7; border-radius:2px; width:0%; transition:width 0.15s linear; }
+#time { font-size:11px; color:#888; }
+</style>
+</head>
+<body>
+<div id="app">
+    <div id="header">
+        <span class="title">🎙️ GeoTalk Live</span>
+        <div class="live-badge"><div class="live-dot"></div>LIVE</div>
+    </div>
+    <div id="panels">
+        <div class="panel" id="panel-a">
+            <canvas id="canvas-a"></canvas>
+            <div class="panel-label">
+                <div class="dot"></div>
+                <span class="name" id="name-a">__SPEAKER_A__</span>
+            </div>
+        </div>
+        <div class="panel" id="panel-b">
+            <canvas id="canvas-b"></canvas>
+            <div class="panel-label">
+                <div class="dot"></div>
+                <span class="name" id="name-b">__SPEAKER_B__</span>
+            </div>
         </div>
     </div>
-    <div id="gt-controls">
-        <button id="gt-play">▶</button>
-        <div id="gt-prog"><div id="gt-prog-fill"></div></div>
-        <span id="gt-time">0:00 / 0:00</span>
+    <div id="caption-bar">
+        <span class="cap-speaker" id="cap-spk"></span>
+        <span class="cap-text" id="cap-txt">Click ▶ to start the episode</span>
     </div>
-    <div id="gt-tog">
-        <span>📜 Transcript</span>
-        <span id="gt-arrow">▼</span>
+    <div id="controls">
+        <button id="play-btn">▶</button>
+        <div id="progress"><div id="progress-fill"></div></div>
+        <span id="time">0:00 / 0:00</span>
     </div>
-    <div id="gt-log"></div>
-</div>
 </div>
 
 <script type="module">
 import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js';
 
-const sceneEl = document.getElementById('gt-scene');
-const canvas = document.getElementById('gt-canvas');
-const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-renderer.setSize(sceneEl.clientWidth, sceneEl.clientHeight);
-renderer.shadowMap.enabled = true;
+// --- Two separate Three.js scenes (one per panel) ---
+function createScene(canvasId) {
+    const canvas = document.getElementById(canvasId);
+    const container = canvas.parentElement;
+    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setSize(container.clientWidth, container.clientHeight);
 
-const scene = new THREE.Scene();
-const camera = new THREE.PerspectiveCamera(45, sceneEl.clientWidth / sceneEl.clientHeight, 0.1, 100);
-camera.position.set(0, 1.5, 5);
-camera.lookAt(0, 0.8, 0);
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(40, container.clientWidth / container.clientHeight, 0.1, 50);
+    camera.position.set(0, 1.2, 3.5);
+    camera.lookAt(0, 0.8, 0);
 
-scene.add(new THREE.AmbientLight(0x404060, 0.8));
-const kl = new THREE.DirectionalLight(0xffffff, 1.2); kl.position.set(3, 5, 4); kl.castShadow = true; scene.add(kl);
-scene.add(Object.assign(new THREE.DirectionalLight(0x4fc3f7, 0.4), { position: new THREE.Vector3(-3, 2, -2) }));
-scene.add(Object.assign(new THREE.PointLight(0xff6f61, 0.6, 10), { position: new THREE.Vector3(0, 3, -3) }));
+    scene.add(new THREE.AmbientLight(0x404060, 1.0));
+    const key = new THREE.DirectionalLight(0xffffff, 1.0); key.position.set(2, 4, 3); scene.add(key);
+    const fill = new THREE.DirectionalLight(0x4fc3f7, 0.3); fill.position.set(-2, 2, -1); scene.add(fill);
 
-const floor = new THREE.Mesh(new THREE.CircleGeometry(4, 64), new THREE.MeshStandardMaterial({ color: 0x1a1a2e, roughness: 0.8 }));
-floor.rotation.x = -Math.PI / 2; floor.receiveShadow = true; scene.add(floor);
-
-function createRobot(color, x) {
-    const g = new THREE.Group();
-    const mc = new THREE.Color(color), dc = mc.clone().multiplyScalar(0.5);
-    const bm = new THREE.MeshStandardMaterial({ color: mc, roughness: 0.3, metalness: 0.6 });
-    const body = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.35, 0.9, 16), bm);
-    body.position.y = 0.7; body.castShadow = true; g.add(body);
-    const ring = new THREE.Mesh(new THREE.TorusGeometry(0.32, 0.03, 8, 32), new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.2, metalness: 0.8 }));
-    ring.position.y = 0.9; ring.rotation.x = Math.PI/2; g.add(ring);
-    const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.12, 0.15, 12), new THREE.MeshStandardMaterial({ color: 0x333333, roughness: 0.4, metalness: 0.7 }));
-    neck.position.y = 1.22; g.add(neck);
-    const head = new THREE.Mesh(new THREE.SphereGeometry(0.28, 24, 24), new THREE.MeshStandardMaterial({ color: mc, roughness: 0.3, metalness: 0.5 }));
-    head.position.y = 1.5; head.castShadow = true; g.add(head);
-    const em = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.1, metalness: 0.9 });
-    const erm = new THREE.MeshStandardMaterial({ color: 0xcccccc, metalness: 0.9, roughness: 0.2 });
-    for (const ex of [-0.1, 0.1]) {
-        const eye = new THREE.Mesh(new THREE.SphereGeometry(0.07, 16, 16), em); eye.position.set(ex, 1.52, 0.24); g.add(eye);
-        const eyeR = new THREE.Mesh(new THREE.TorusGeometry(0.07, 0.015, 8, 16), erm); eyeR.position.set(ex, 1.52, 0.24); g.add(eyeR);
-    }
-    const am = new THREE.MeshStandardMaterial({ color: 0x666666, metalness: 0.8, roughness: 0.3 });
-    const la = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.02, 0.3, 8), am); la.position.set(-0.12, 1.85, 0); la.rotation.z = 0.2; g.add(la);
-    const ra = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.02, 0.3, 8), am); ra.position.set(0.12, 1.85, 0); ra.rotation.z = -0.2; g.add(ra);
-    const tm = new THREE.MeshStandardMaterial({ color: mc, emissive: mc, emissiveIntensity: 0.5, roughness: 0.2 });
-    const lt = new THREE.Mesh(new THREE.SphereGeometry(0.035, 12, 12), tm); lt.position.set(-0.15, 2.0, 0); g.add(lt);
-    const rt = new THREE.Mesh(new THREE.SphereGeometry(0.035, 12, 12), tm); rt.position.set(0.15, 2.0, 0); g.add(rt);
-    const base = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.4, 0.15, 16), new THREE.MeshStandardMaterial({ color: dc, roughness: 0.4, metalness: 0.6 }));
-    base.position.y = 0.15; base.castShadow = true; g.add(base);
-    const spk = new THREE.Mesh(new THREE.CircleGeometry(0.12, 24), new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.8, side: THREE.DoubleSide }));
-    spk.position.set(0, 0.6, 0.35); g.add(spk);
-    g.position.x = x;
-    g.userData = { head, la, ra, tm, talkPhase: 0 };
-    scene.add(g);
-    return g;
+    return { renderer, scene, camera, container };
 }
 
-const rA = createRobot(0x4caf50, -1.2);
-const rB = createRobot(0x9c27b0, 1.2);
-rA.rotation.y = 0.3; rB.rotation.y = -0.3;
+function createRobot(scene, color) {
+    const g = new THREE.Group();
+    const mc = new THREE.Color(color);
+
+    // Body
+    const bodyMat = new THREE.MeshStandardMaterial({ color: 0xf5f5f5, roughness: 0.4, metalness: 0.2 });
+    const body = new THREE.Mesh(new THREE.CapsuleGeometry(0.35, 0.5, 16, 16), bodyMat);
+    body.position.y = 0.6; g.add(body);
+
+    // Head
+    const headMat = new THREE.MeshStandardMaterial({ color: 0xfafafa, roughness: 0.3, metalness: 0.1 });
+    const head = new THREE.Mesh(new THREE.SphereGeometry(0.32, 24, 24), headMat);
+    head.position.y = 1.4; g.add(head);
+    // Flatten slightly for Reachy look
+    head.scale.set(1, 0.85, 0.9);
+
+    // Eyes (camera lenses)
+    const lensMat = new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.1, metalness: 0.9 });
+    const lensRingMat = new THREE.MeshStandardMaterial({ color: 0x888888, metalness: 0.8, roughness: 0.3 });
+    for (const ex of [-0.12, 0.12]) {
+        const lens = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.05, 16), lensMat);
+        lens.position.set(ex, 1.42, 0.28); lens.rotation.x = Math.PI/2; g.add(lens);
+        const ring = new THREE.Mesh(new THREE.TorusGeometry(0.065, 0.012, 8, 16), lensRingMat);
+        ring.position.set(ex, 1.42, 0.29); g.add(ring);
+    }
+
+    // Antenna
+    const antMat = new THREE.MeshStandardMaterial({ color: 0x333333, metalness: 0.7, roughness: 0.4 });
+    const ant = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.012, 0.25, 8), antMat);
+    ant.position.set(0, 1.75, 0); g.add(ant);
+    const tipMat = new THREE.MeshStandardMaterial({ color: mc, emissive: mc, emissiveIntensity: 0.5 });
+    const tip = new THREE.Mesh(new THREE.SphereGeometry(0.025, 8, 8), tipMat);
+    tip.position.set(0, 1.88, 0); g.add(tip);
+
+    // Base
+    const baseMat = new THREE.MeshStandardMaterial({ color: 0xe0e0e0, roughness: 0.5 });
+    const base = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.35, 0.2, 16), baseMat);
+    base.position.y = 0.1; g.add(base);
+
+    scene.add(g);
+    return { group: g, head, ant, tip, tipMat, body };
+}
+
+const scA = createScene('canvas-a');
+const scB = createScene('canvas-b');
+const robotA = createRobot(scA.scene, 0x4caf50);
+const robotB = createRobot(scB.scene, 0x9c27b0);
 
 let curSpk = -1;
-function idleA(r, t, o) { const d = r.userData; r.position.y = Math.sin(t*0.8+o)*0.02; d.la.rotation.z = 0.2+Math.sin(t*1.2+o)*0.05; d.ra.rotation.z = -0.2+Math.sin(t*1.2+o+1)*0.05; d.tm.emissiveIntensity = 0.3+Math.sin(t*2)*0.1; }
-function talkA(r) { const d = r.userData; d.talkPhase += 0.15; d.head.position.y = 1.5+Math.sin(d.talkPhase*3)*0.02; d.head.rotation.x = Math.sin(d.talkPhase*2)*0.05; d.head.rotation.z = Math.sin(d.talkPhase*1.5)*0.03; d.la.rotation.z = 0.2+Math.sin(d.talkPhase*4)*0.15; d.ra.rotation.z = -0.2+Math.sin(d.talkPhase*4+1)*0.15; d.tm.emissiveIntensity = 0.5+Math.sin(d.talkPhase*5)*0.4; r.rotation.x = Math.sin(d.talkPhase*1.2)*0.03; }
-function lisA(r, t) { const d = r.userData; d.head.rotation.z = Math.sin(t*0.5)*0.08; d.head.rotation.x = -0.05; d.tm.emissiveIntensity = 0.3; }
+
+function talkAnim(robot, t) {
+    const h = robot.head;
+    robot._phase = (robot._phase || 0) + 0.12;
+    h.position.y = 1.4 + Math.sin(robot._phase * 3) * 0.015;
+    h.rotation.x = Math.sin(robot._phase * 2) * 0.04;
+    h.rotation.z = Math.sin(robot._phase * 1.3) * 0.03;
+    robot.ant.rotation.z = Math.sin(robot._phase * 4) * 0.1;
+    robot.tipMat.emissiveIntensity = 0.5 + Math.sin(robot._phase * 5) * 0.4;
+    robot.group.rotation.y = Math.sin(robot._phase * 0.8) * 0.05;
+}
+
+function idleAnim(robot, t, offset) {
+    robot.head.position.y = 1.4 + Math.sin(t * 0.6 + offset) * 0.008;
+    robot.head.rotation.x = 0;
+    robot.head.rotation.z = Math.sin(t * 0.3 + offset) * 0.01;
+    robot.ant.rotation.z = Math.sin(t * 0.8 + offset) * 0.03;
+    robot.tipMat.emissiveIntensity = 0.3 + Math.sin(t * 1.5) * 0.1;
+    robot.group.rotation.y = 0;
+}
+
+function listenAnim(robot, t) {
+    robot.head.rotation.z = Math.sin(t * 0.4) * 0.06;
+    robot.head.rotation.x = -0.03;
+    robot.tipMat.emissiveIntensity = 0.2;
+}
 
 function animate() {
     requestAnimationFrame(animate);
     const t = performance.now() / 1000;
-    if (curSpk === 0) { talkA(rA); lisA(rB, t); }
-    else if (curSpk === 1) { talkA(rB); lisA(rA, t); }
-    else { idleA(rA, t, 0); idleA(rB, t, Math.PI); }
-    renderer.render(scene, camera);
+
+    if (curSpk === 0) { talkAnim(robotA, t); listenAnim(robotB, t); }
+    else if (curSpk === 1) { talkAnim(robotB, t); listenAnim(robotA, t); }
+    else { idleAnim(robotA, t, 0); idleAnim(robotB, t, 2); }
+
+    scA.renderer.render(scA.scene, scA.camera);
+    scB.renderer.render(scB.scene, scB.camera);
 }
 animate();
 
-function onResize() {
-    const w = sceneEl.clientWidth, h = sceneEl.clientHeight;
-    if (w === 0 || h === 0) return;
-    camera.aspect = w / h; camera.updateProjectionMatrix(); renderer.setSize(w, h);
+// Resize
+function resize() {
+    for (const sc of [scA, scB]) {
+        const w = sc.container.clientWidth, h = sc.container.clientHeight;
+        if (w > 0 && h > 0) {
+            sc.camera.aspect = w / h; sc.camera.updateProjectionMatrix();
+            sc.renderer.setSize(w, h);
+        }
+    }
 }
-window.addEventListener('resize', onResize);
-new ResizeObserver(onResize).observe(sceneEl);
+window.addEventListener('resize', resize);
+new ResizeObserver(resize).observe(document.getElementById('panels'));
 
-// --- Audio Sync Engine ---
-let syncedAudio = null;
-let timeline = [];
+// --- Audio + Timeline ---
+const timeline = __TIMELINE_DATA__;
 let totalDur = 0;
-let activeIdx = -1;
+const cumTimes = [];
+timeline.forEach(it => { cumTimes.push(totalDur); totalDur += it.duration; });
 
-const playBtn = document.getElementById('gt-play');
-const progFill = document.getElementById('gt-prog-fill');
-const progBar = document.getElementById('gt-prog');
-const timeDisp = document.getElementById('gt-time');
-const logPanel = document.getElementById('gt-log');
-const togEl = document.getElementById('gt-tog');
+const audioB64 = "__AUDIO_B64__";
+const audio = new Audio("data:audio/mpeg;base64," + audioB64);
 
-let logOpen = true;
-togEl.addEventListener('click', () => {
-    logOpen = !logOpen;
-    logPanel.style.display = logOpen ? 'block' : 'none';
-    document.getElementById('gt-arrow').textContent = logOpen ? '▼' : '▶';
+const playBtn = document.getElementById('play-btn');
+const progFill = document.getElementById('progress-fill');
+const progBar = document.getElementById('progress');
+const timeEl = document.getElementById('time');
+const panelA = document.getElementById('panel-a');
+const panelB = document.getElementById('panel-b');
+const capSpk = document.getElementById('cap-spk');
+const capTxt = document.getElementById('cap-txt');
+
+function fmt(s) { return Math.floor(s/60)+':'+String(Math.floor(s%60)).padStart(2,'0'); }
+timeEl.textContent = `0:00 / ${fmt(totalDur)}`;
+
+playBtn.addEventListener('click', () => { if (audio.paused) audio.play(); else audio.pause(); });
+audio.addEventListener('play', () => { playBtn.textContent = '⏸'; });
+audio.addEventListener('pause', () => { playBtn.textContent = '▶'; });
+audio.addEventListener('ended', () => {
+    playBtn.textContent = '▶'; curSpk = -1;
+    panelA.classList.remove('active'); panelB.classList.remove('active-b');
+    capSpk.textContent = ''; capTxt.textContent = '✅ Episode complete!';
 });
 
-// Play/pause controls the synced Gradio audio
-playBtn.addEventListener('click', () => {
-    if (!syncedAudio) return;
-    if (syncedAudio.paused) syncedAudio.play();
-    else syncedAudio.pause();
-});
-
-progBar.addEventListener('click', (e) => {
-    if (!syncedAudio || !totalDur) return;
+progBar.addEventListener('click', e => {
     const r = progBar.getBoundingClientRect();
-    syncedAudio.currentTime = ((e.clientX - r.left) / r.width) * totalDur;
+    audio.currentTime = ((e.clientX - r.left) / r.width) * (audio.duration || totalDur);
 });
 
-function fmt(s) { return Math.floor(s/60) + ':' + String(Math.floor(s%60)).padStart(2,'0'); }
+let activeIdx = -1;
+setInterval(() => {
+    if (!audio.duration) return;
+    const el = audio.currentTime;
+    const dur = audio.duration;
+    progFill.style.width = (el/dur*100) + '%';
+    timeEl.textContent = `${fmt(el)} / ${fmt(dur)}`;
 
-// Continuous sync loop - runs every 100ms to stay in sync with audio
-setInterval(function tick() {
-    if (!syncedAudio) return;
-    const el = syncedAudio.currentTime;
-    const dur = syncedAudio.duration || totalDur;
+    if (audio.paused) return;
 
-    // Update progress bar and time
-    progFill.style.width = (dur > 0 ? (el/dur)*100 : 0) + '%';
-    timeDisp.textContent = `${fmt(el)} / ${fmt(dur)}`;
-
-    // If audio is paused, don't update speaker animations
-    if (syncedAudio.paused && !syncedAudio.ended) return;
-
-    // Find active line by current time
+    // Find active line
     let ni = -1;
     for (let i = 0; i < timeline.length; i++) {
-        if (el >= timeline[i].st && el < timeline[i].st + timeline[i].dur) { ni = i; break; }
+        if (el >= cumTimes[i] && el < cumTimes[i] + timeline[i].duration) { ni = i; break; }
     }
-
     if (ni !== activeIdx) {
         activeIdx = ni;
         if (ni >= 0) {
             const it = timeline[ni];
             curSpk = it.speakerIdx;
-            document.getElementById('gt-sub-spk').textContent = it.speaker + ':';
-            document.getElementById('gt-sub-txt').textContent = it.line;
-            document.getElementById('gt-ind-l').classList.toggle('active', it.speakerIdx === 0);
-            document.getElementById('gt-ind-r').classList.toggle('active', it.speakerIdx === 1);
-            const lines = logPanel.querySelectorAll('.gt-line');
-            lines.forEach((el, i) => { el.classList.toggle('active', i === ni); el.classList.toggle('past', i < ni); });
-            if (lines[ni]) lines[ni].scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            capSpk.textContent = it.speaker + ':';
+            capTxt.textContent = it.line;
+            panelA.classList.toggle('active', it.speakerIdx === 0);
+            panelB.classList.toggle('active-b', it.speakerIdx === 1);
         }
     }
-}, 100);
+}, 80);
 
-function buildLog(data) {
-    logPanel.innerHTML = '';
-    data.forEach((it) => {
-        const d = document.createElement('div');
-        d.className = 'gt-line' + (it.speakerIdx === 1 ? ' spkb' : '');
-        d.innerHTML = `<span class="gt-ls">${it.speaker}:</span> ${it.line}`;
-        logPanel.appendChild(d);
-    });
-}
-
-// --- Public API ---
-window.GeoTalkRobots = {
-    /** Load timeline data and set speaker labels */
-    loadTimeline(data, spkA, spkB) {
-        document.getElementById('gt-ind-l').textContent = spkA || 'Speaker A';
-        document.getElementById('gt-ind-r').textContent = spkB || 'Speaker B';
-        timeline = []; let cum = 0;
-        for (const it of data) { timeline.push({ ...it, st: cum, dur: it.duration }); cum += it.duration; }
-        totalDur = cum;
-        timeDisp.textContent = `0:00 / ${fmt(totalDur)}`;
-        buildLog(data);
-        document.getElementById('gt-sub-spk').textContent = '';
-        document.getElementById('gt-sub-txt').textContent = '🎙️ Episode loaded — playing...';
-        activeIdx = -1;
-    },
-
-    /** Sync robot animations to an existing audio element (e.g. Gradio's) */
-    syncToAudio(audioElement) {
-        // Avoid double-binding
-        if (syncedAudio === audioElement) return;
-        syncedAudio = audioElement;
-
-        // If audio is already playing, update UI
-        if (!audioElement.paused) {
-            playBtn.textContent = '⏸';
-        }
-        // Listen for play/pause events
-        audioElement.addEventListener('play', () => { playBtn.textContent = '⏸'; });
-        audioElement.addEventListener('pause', () => { playBtn.textContent = '▶'; });
-        audioElement.addEventListener('ended', () => {
-            curSpk = -1; playBtn.textContent = '▶';
-            document.getElementById('gt-sub-spk').textContent = '';
-            document.getElementById('gt-sub-txt').textContent = '✅ Episode complete!';
-            document.getElementById('gt-ind-l').classList.remove('active');
-            document.getElementById('gt-ind-r').classList.remove('active');
-        });
-    },
-
-    /** Convenience: start with own audio (standalone mode) */
-    start(data, spkA, spkB, audioUrl) {
-        this.loadTimeline(data, spkA, spkB);
-        const audio = new Audio(audioUrl);
-        this.syncToAudio(audio);
-        audio.play().catch(() => {
-            document.getElementById('gt-sub-txt').textContent = '▶ Press play to start';
-        });
-    },
-
-    idle(msg) {
-        curSpk = -1;
-        document.getElementById('gt-sub-spk').textContent = '';
-        document.getElementById('gt-sub-txt').textContent = msg || 'Waiting for episode...';
-        document.getElementById('gt-ind-l').classList.remove('active');
-        document.getElementById('gt-ind-r').classList.remove('active');
-        progFill.style.width = '0%';
-        timeDisp.textContent = '0:00 / 0:00';
-        logPanel.innerHTML = `<div style="color:rgba(255,255,255,0.4);font-size:12px;padding:10px;">${msg || 'Transcript will appear here...'}</div>`;
-    }
-};
-
-window.GeoTalkRobots.idle();
+// Auto-play on load
+audio.play().catch(() => {
+    capTxt.textContent = '▶ Click play to start the episode';
+});
 </script>
+</body>
+</html>
