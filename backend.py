@@ -51,7 +51,8 @@ def encode_image(image_path: str) -> str:
 
 
 def describe_image(image_path: str, context: str) -> str:
-    """Use vision model to describe an uploaded image."""
+    """Use vision model to describe an uploaded image. Retries on transient errors."""
+    import time
     from PIL import Image
 
     b64 = encode_image(image_path)
@@ -63,20 +64,28 @@ def describe_image(image_path: str, context: str) -> str:
     else:
         mime = "image/jpeg"
 
-    response = client.chat_completion(
-        model=VISION_MODEL,
-        messages=[
-            {
-                "role": "user",
-                "content": [
-                    {"type": "image_url", "image_url": {"url": f"data:{mime};base64,{b64}"}},
-                    {"type": "text", "text": context},
+    max_retries = 2
+    for attempt in range(max_retries + 1):
+        try:
+            response = client.chat_completion(
+                model=VISION_MODEL,
+                messages=[
+                    {
+                        "role": "user",
+                        "content": [
+                            {"type": "image_url", "image_url": {"url": f"data:{mime};base64,{b64}"}},
+                            {"type": "text", "text": context},
+                        ],
+                    }
                 ],
-            }
-        ],
-        max_tokens=500,
-    )
-    return response.choices[0].message.content
+                max_tokens=500,
+            )
+            return response.choices[0].message.content
+        except Exception as e:
+            if attempt < max_retries and ("504" in str(e) or "500" in str(e) or "timeout" in str(e).lower()):
+                time.sleep(3)
+                continue
+            raise
 
 
 def generate_debate_script(system_prompt: str, user_prompt: str) -> list[dict]:
