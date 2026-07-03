@@ -20,7 +20,7 @@ client = InferenceClient(token=HF_TOKEN)
 VOICE_PAIRS = {
     "core_talk": ("en-US-GuyNeural", "en-US-JennyNeural"),
     "log_doctor": ("en-GB-RyanNeural", "en-GB-SoniaNeural"),
-    "field_trip": ("en-US-DavisNeural", "en-US-AriaNeural"),
+    "field_trip": ("en-US-ChristopherNeural", "en-US-AriaNeural"),
 }
 
 # Chair/host voice (neutral, authoritative)
